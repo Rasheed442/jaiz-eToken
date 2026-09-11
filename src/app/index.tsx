@@ -11,11 +11,12 @@ import AnimatedSplashScreen from "@/screens/AnimatedSplashScreen";
 import CreateProfileScreen from "@/screens/CreateProfileScreen";
 import EtokenActivatedScreen from "@/screens/EtokenActivatedScreen";
 import FacialVerificationScreen from "@/screens/FacialVerificationScreen";
+import DashboardScreen from "@/screens/HomeScreen";
 import LoginScreen from "@/screens/LoginScreen";
 import PersonalRegistrationScreen from "@/screens/PersonalRegistrationScreen";
 import WelcomeScreen from "@/screens/WelcomeScreen";
 
-type Screen = "welcome" | "personal-registration" | "otp" | "facial-verification" | "create-profile" | "etoken-activated" | "login" | "animated-splash";
+type Screen = "welcome" | "personal-registration" | "otp" | "facial-verification" | "create-profile" | "etoken-activated" | "login" | "home" | "animated-splash";
 type TransitionDirection = "forward" | "backward";
 
 function AnimatedScreen({
@@ -162,12 +163,23 @@ export default function HomeScreen() {
           onUsernameChange={setUsername}
           onLogin={() => {
             setTransitionDirection("forward");
-            setScreen("welcome");
+            setScreen("home");
           }}
           onForgotPasscode={() => {
             setTransitionDirection("backward");
             setScreen("welcome");
           }}
+        />
+      );
+    }
+
+    if (screen === "home") {
+      return (
+        <DashboardScreen
+          fullName={username || "Ibrahim Al-Hassan"}
+          cifLast4="4842"
+          onManageDevice={() => {}}
+          onNotificationsPress={() => {}}
         />
       );
     }

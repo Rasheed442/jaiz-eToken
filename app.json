@@ -22,8 +22,11 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "CAMERA"
-      ]
+        "CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.rasheed44.jaiz"
     },
     "web": {
       "output": "static",
@@ -47,6 +50,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "226556b8-3beb-4844-a6a4-467aa4343b2f"
+      }
     }
   }
 }
