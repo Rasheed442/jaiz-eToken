@@ -2,6 +2,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Calendar, ChevronLeft, Hash, User } from "lucide-react-native";
 import { useRef, useState } from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,6 +11,9 @@ import {
   TextInput,
   View
 } from "react-native";
+import Animated, {
+  SlideInLeft
+} from "react-native-reanimated";
 
 type PersonalRegistrationScreenProps = {
   onBack: () => void;
@@ -181,6 +185,7 @@ export default function PersonalRegistrationScreen({
   const [lastName, setLastName] = useState("");
   const [showError, setShowError] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | null>(null);
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [resendSeconds, setResendSeconds] = useState(56);
@@ -255,10 +260,8 @@ export default function PersonalRegistrationScreen({
         <View className="flex-row items-center pt-6">
           <BackButton onPress={showOtp ? () => setShowOtp(false) : onBack} />
           <View className="ml-3 flex-1">
-            {/* Step is driven entirely by the caller — the OTP screen is
-                part of the same step in your flow, not a new one, so we
-                don't bump it locally. */}
-            <ProgressBar step={step} totalSteps={totalSteps} />
+            {/* When showing OTP, increment the step to show progress */}
+            <ProgressBar step={showOtp ? step + 1 : step} totalSteps={totalSteps} />
           </View>
         </View>
 
@@ -304,8 +307,16 @@ export default function PersonalRegistrationScreen({
                 value={dateOfBirth}
                 onChangeText={setDateOfBirth}
                 editable={false}
-                onPress={() => setShowDatePicker(true)}
-                onFocus={() => setShowDatePicker(true)}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setTempDate(dateOfBirth ? parseDate(dateOfBirth) : new Date());
+                  setShowDatePicker(true);
+                }}
+                onFocus={() => {
+                  Keyboard.dismiss();
+                  setTempDate(dateOfBirth ? parseDate(dateOfBirth) : new Date());
+                  setShowDatePicker(true);
+                }}
                 icon={<Calendar size={20} color="#5C6478" />}
               />
 
@@ -340,11 +351,11 @@ export default function PersonalRegistrationScreen({
             </View>
           </>
         ) : (
-          <>
-            <Text className="mt-7 text-[36px] font-outfit-semibold text-[#1B2D4A]">
+          <Animated.View entering={SlideInLeft.duration(400).springify()}>
+            <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
               Enter code
             </Text>
-            <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
+            <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
               We sent a 6-digit code to +234 801 •••• 45
             </Text>
 
@@ -355,7 +366,7 @@ export default function PersonalRegistrationScreen({
             <Pressable
               disabled={resendSeconds > 0}
               className={[
-                "mt-8 items-center justify-center rounded-2xl border border-[#C3CAD4] bg-[#EEF2F6] px-4 py-4",
+                "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] bg-[#EEF2F6] px-4 py-4",
                 resendSeconds > 0 ? "opacity-80" : ""
               ].join(" ")}
               onPress={() => {
@@ -364,7 +375,7 @@ export default function PersonalRegistrationScreen({
                 // TODO: trigger the actual resend request here.
               }}
             >
-              <Text className="text-[18px] font-outfit-medium text-[#1B2D4A]">
+              <Text className="text-[18px] font-outfit-semibold text-[#193F7F]">
                 {resendLabel}
               </Text>
             </Pressable>
@@ -373,7 +384,7 @@ export default function PersonalRegistrationScreen({
               <Pressable
                 accessibilityRole="button"
                 className={[
-                  "flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-5",
+                  "flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-3",
                   !isOtpComplete ? "opacity-60" : ""
                 ].join(" ")}
                 disabled={!isOtpComplete}
@@ -383,7 +394,7 @@ export default function PersonalRegistrationScreen({
                   }
                 }}
               >
-                <Text className="text-[24px] font-outfit-semibold text-white">
+                <Text className="text-[22px] font-outfit-semibold text-white">
                   Verify
                 </Text>
                 <Text className="ml-2 text-[28px] font-light text-white">
@@ -391,7 +402,7 @@ export default function PersonalRegistrationScreen({
                 </Text>
               </Pressable>
             </View>
-          </>
+          </Animated.View>
         )}
 
         {showDatePicker && (
@@ -406,7 +417,14 @@ export default function PersonalRegistrationScreen({
                 <Text className="text-[16px] font-outfit-medium text-[#1B2D4A]">
                   Select date of birth
                 </Text>
-                <Pressable onPress={() => setShowDatePicker(false)}>
+                <Pressable
+                  onPress={() => {
+                    if (tempDate) {
+                      setDateOfBirth(formatDate(tempDate));
+                    }
+                    setShowDatePicker(false);
+                  }}
+                >
                   <Text className="text-[15px] font-outfit-semibold text-[#123E7C]">
                     Done
                   </Text>
@@ -414,7 +432,7 @@ export default function PersonalRegistrationScreen({
               </View>
 
               <DateTimePicker
-                value={dateOfBirth ? parseDate(dateOfBirth) : new Date()}
+                value={tempDate || new Date()}
                 mode="date"
                 display={Platform.OS === "ios" ? "spinner" : "calendar"}
                 maximumDate={new Date()}
@@ -423,9 +441,8 @@ export default function PersonalRegistrationScreen({
                 themeVariant="light"
                 onChange={(_, selectedDate) => {
                   if (selectedDate) {
-                    setDateOfBirth(formatDate(selectedDate));
+                    setTempDate(selectedDate);
                   }
-                  setShowDatePicker(false);
                 }}
               />
             </View>
