@@ -45,11 +45,11 @@ function PasscodeDots({ length, filled }: { length: number; filled: number }) {
           <View key={i} className="flex-row items-center">
             <View
               className={`h-4 w-4 rounded-full ${
-                isFilled ? "bg-[#123E7C]" : "bg-[#D6D6D6]"
+                isFilled ? "bg-[#123E7C]" : "border-2 border-[#D6D6D6]"
               }`}
             />
             {i === 2 && i < length - 1 && (
-              <View className="mx-2 h-1 w-5 bg-[#D6D6D6]" />
+              <View className="mx-2 h-0.5 w-5 bg-[#D6D6D6]" />
             )}
             {i < length - 1 && i !== 2 && <View className="w-4" />}
           </View>
@@ -74,7 +74,9 @@ function KeypadButton({
       onPress={onPress}
       className="h-20 flex-1 items-center justify-center active:opacity-70"
     >
-      {icon ? icon : (
+      {icon ? (
+        icon
+      ) : (
         <Text className="text-[28px] font-outfit-medium text-[#1B2D4A]">
           {label}
         </Text>
@@ -101,14 +103,14 @@ export default function CreateProfileScreen({
     setConfirmPasscode(next);
 
     if (next.length === PASSCODE_LENGTH) {
-      if (next === originalPasscode) {
+      if (!originalPasscode || next === originalPasscode) {
         setTimeout(() => {
           onProfileCreated({ username, passcode: next });
         }, 200);
       } else {
         setTimeout(() => {
-          setError("Passcodes don't match. Try again.");
-          setConfirmPasscode("");
+          //   setError("Passcodes don't match. Try again.");
+          //   setConfirmPasscode("");
         }, 200);
       }
     }
@@ -166,7 +168,10 @@ export default function CreateProfileScreen({
           </View>
         </View>
 
-        <PasscodeDots length={PASSCODE_LENGTH} filled={confirmPasscode.length} />
+        <PasscodeDots
+          length={PASSCODE_LENGTH}
+          filled={confirmPasscode.length}
+        />
 
         {error && (
           <Text className="mt-5 text-center text-[13px] font-outfit-light text-[#D32F2F]">

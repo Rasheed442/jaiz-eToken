@@ -9,11 +9,13 @@ import Animated, {
 
 import AnimatedSplashScreen from "@/screens/AnimatedSplashScreen";
 import CreateProfileScreen from "@/screens/CreateProfileScreen";
+import EtokenActivatedScreen from "@/screens/EtokenActivatedScreen";
 import FacialVerificationScreen from "@/screens/FacialVerificationScreen";
+import LoginScreen from "@/screens/LoginScreen";
 import PersonalRegistrationScreen from "@/screens/PersonalRegistrationScreen";
 import WelcomeScreen from "@/screens/WelcomeScreen";
 
-type Screen = "welcome" | "personal-registration" | "otp" | "facial-verification" |  "create-profile" | "animated-splash";
+type Screen = "welcome" | "personal-registration" | "otp" | "facial-verification" | "create-profile" | "etoken-activated" | "login" | "animated-splash";
 type TransitionDirection = "forward" | "backward";
 
 function AnimatedScreen({
@@ -47,6 +49,7 @@ export default function HomeScreen() {
   const [screen, setScreen] = useState<Screen>("animated-splash");
   const [transitionDirection, setTransitionDirection] =
     useState<TransitionDirection>("forward");
+  const [username, setUsername] = useState("");
 
   const renderScreen = () => {
     if (screen === "animated-splash") {
@@ -127,14 +130,45 @@ export default function HomeScreen() {
               setTransitionDirection("backward");
               setScreen("otp");
             }}
-            onProfileCreated={() => {
+            onProfileCreated={({ username: profileUsername }) => {
+              setUsername(profileUsername);
               setTransitionDirection("forward");
-              setScreen("animated-splash");
+              setScreen("etoken-activated");
             }}
             originalPasscode=""
             progress={0.6}
           />
         </View>
+      );
+    }
+
+    if (screen === "etoken-activated") {
+      return (
+        <View className="flex-1 bg-[#F3F5F7]">
+          <EtokenActivatedScreen
+            onGoToLogin={() => {
+              setTransitionDirection("forward");
+              setScreen("login");
+            }}
+          />
+        </View>
+      );
+    }
+
+    if (screen === "login") {
+      return (
+        <LoginScreen
+          username={username}
+          onUsernameChange={setUsername}
+          onLogin={() => {
+            setTransitionDirection("forward");
+            setScreen("welcome");
+          }}
+          onForgotPasscode={() => {
+            setTransitionDirection("backward");
+            setScreen("welcome");
+          }}
+        />
       );
     }
 
