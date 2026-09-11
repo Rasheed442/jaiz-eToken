@@ -8,7 +8,10 @@
     "scheme": "jaiz",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs camera access to verify your identity for secure transactions."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +20,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA"
+      ]
     },
     "web": {
       "output": "static",
@@ -35,7 +41,8 @@
         }
       ],
       "expo-asset",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-camera"
     ],
     "experiments": {
       "typedRoutes": true,

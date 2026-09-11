@@ -8,11 +8,12 @@ import Animated, {
 } from "react-native-reanimated";
 
 import AnimatedSplashScreen from "@/screens/AnimatedSplashScreen";
-import OtpVerificationScreen from "@/screens/OtpVerificationScreen";
+import CreateProfileScreen from "@/screens/CreateProfileScreen";
+import FacialVerificationScreen from "@/screens/FacialVerificationScreen";
 import PersonalRegistrationScreen from "@/screens/PersonalRegistrationScreen";
 import WelcomeScreen from "@/screens/WelcomeScreen";
 
-type Screen = "welcome" | "personal-registration" | "otp" | "animated-splash";
+type Screen = "welcome" | "personal-registration" | "otp" | "facial-verification" |  "create-profile" | "animated-splash";
 type TransitionDirection = "forward" | "backward";
 
 function AnimatedScreen({
@@ -73,19 +74,65 @@ export default function HomeScreen() {
               setTransitionDirection("forward");
               setScreen("otp");
             }}
+            onOtpComplete={() => {
+              setTransitionDirection("forward");
+              setScreen("facial-verification");
+            }}
           />
         </View>
       );
     }
 
-    if (screen === "otp") {
+    // if (screen === "otp") {
+    //   return (
+    //     <View className="flex-1 bg-[#0B1F3B]">
+    //       <OtpVerificationScreen
+    //         onBack={() => {
+    //           setTransitionDirection("backward");
+    //           setScreen("personal-registration");
+    //         }}
+    //         onVerifyComplete={() => {
+    //           setTransitionDirection("forward");
+    //           setScreen("facial-verification");
+    //         }}
+    //       />
+    //     </View>
+    //   );
+    // }
+
+    if (screen === "facial-verification") {
       return (
-        <View className="flex-1 bg-[#0B1F3B]">
-          <OtpVerificationScreen
+        <View className="flex-1 bg-[#F3F5F7]">
+          <FacialVerificationScreen
             onBack={() => {
               setTransitionDirection("backward");
-              setScreen("personal-registration");
+              setScreen("otp");
             }}
+            onVerificationComplete={() => {
+              setTransitionDirection("forward");
+              setScreen("create-profile");
+            }}
+            step={3}
+            totalSteps={5}
+          />
+        </View>
+      );
+    }
+
+    if (screen === "create-profile") {
+      return (
+        <View className="flex-1 bg-[#F3F5F7]">
+          <CreateProfileScreen
+            onBack={() => {
+              setTransitionDirection("backward");
+              setScreen("otp");
+            }}
+            onProfileCreated={() => {
+              setTransitionDirection("forward");
+              setScreen("animated-splash");
+            }}
+            originalPasscode=""
+            progress={0.6}
           />
         </View>
       );

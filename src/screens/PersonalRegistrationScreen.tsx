@@ -23,6 +23,12 @@ type PersonalRegistrationScreenProps = {
     dateOfBirth: string;
     lastName: string;
   }) => void;
+  onOtpComplete?: (values: {
+    accountNumber: string;
+    bvn: string;
+    dateOfBirth: string;
+    lastName: string;
+  }) => void;
   step?: number;
   totalSteps?: number;
 };
@@ -176,6 +182,7 @@ function OtpInput({
 export default function PersonalRegistrationScreen({
   onBack,
   onContinue,
+  onOtpComplete,
   step = 1,
   totalSteps = 5
 }: PersonalRegistrationScreenProps) {
@@ -187,6 +194,7 @@ export default function PersonalRegistrationScreen({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date | null>(null);
   const [showOtp, setShowOtp] = useState(false);
+  const [currentStep, setCurrentStep] = useState(step);
   const [otpCode, setOtpCode] = useState("");
   const [resendSeconds, setResendSeconds] = useState(56);
 
@@ -238,6 +246,7 @@ export default function PersonalRegistrationScreen({
     }
 
     setShowError(false);
+    setCurrentStep(step + 1);
     setShowOtp(true);
   };
 
@@ -260,8 +269,7 @@ export default function PersonalRegistrationScreen({
         <View className="flex-row items-center pt-6">
           <BackButton onPress={showOtp ? () => setShowOtp(false) : onBack} />
           <View className="ml-3 flex-1">
-            {/* When showing OTP, increment the step to show progress */}
-            <ProgressBar step={showOtp ? step + 1 : step} totalSteps={totalSteps} />
+            <ProgressBar step={currentStep} totalSteps={totalSteps} />
           </View>
         </View>
 
@@ -390,7 +398,11 @@ export default function PersonalRegistrationScreen({
                 disabled={!isOtpComplete}
                 onPress={() => {
                   if (isOtpComplete) {
-                    onContinue({ accountNumber, bvn, dateOfBirth, lastName });
+                    if (onOtpComplete) {
+                      onOtpComplete({ accountNumber, bvn, dateOfBirth, lastName });
+                    } else {
+                      onContinue({ accountNumber, bvn, dateOfBirth, lastName });
+                    }
                   }
                 }}
               >

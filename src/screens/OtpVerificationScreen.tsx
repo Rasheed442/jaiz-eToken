@@ -11,6 +11,7 @@ import {
 
 type OtpVerificationScreenProps = {
   onBack: () => void;
+  onVerifyComplete?: () => void;
 };
 
 function BackButton({ onPress }: { onPress: () => void }) {
@@ -29,7 +30,8 @@ function BackButton({ onPress }: { onPress: () => void }) {
 const otpLength = 6;
 
 export default function OtpVerificationScreen({
-  onBack
+  onBack,
+  onVerifyComplete
 }: OtpVerificationScreenProps) {
   const [code, setCode] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(56);
@@ -136,6 +138,11 @@ export default function OtpVerificationScreen({
           <Pressable
             className={`items-center rounded-[28px] bg-[#123E7C] px-5 py-5 ${!isComplete ? "opacity-60" : ""}`}
             disabled={!isComplete}
+            onPress={() => {
+              if (isComplete && onVerifyComplete) {
+                onVerifyComplete();
+              }
+            }}
           >
             <View className="flex-row items-center justify-center">
               <Text className="text-[24px] font-semibold text-white">
