@@ -1,3 +1,4 @@
+import { ChevronLeft } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -8,54 +9,105 @@ import {
   TextInput,
   View
 } from "react-native";
+import Animated, {
+  SlideInLeft
+} from "react-native-reanimated";
 
 type OtpVerificationScreenProps = {
   onBack: () => void;
   onVerifyComplete?: () => void;
+  phoneNumber?: string;
 };
+
+const OTP_LENGTH = 6;
 
 function BackButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       accessibilityLabel="Go back"
       accessibilityRole="button"
-      className="h-11 w-11 items-center justify-center rounded-full bg-[#E7E9EC] active:opacity-70"
+      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] active:opacity-70"
       onPress={onPress}
     >
-      <Text className="text-[28px] leading-6 text-[#1B2D4A]">‹</Text>
+      <ChevronLeft size={22} color="black" />
     </Pressable>
   );
 }
 
-const otpLength = 6;
+function OtpInput({
+  value,
+  onChange
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const inputRef = useRef<TextInput>(null);
+  const digits = Array.from({ length: OTP_LENGTH }, (_, i) => value[i] ?? "");
+
+  return (
+    <Pressable
+      className="relative flex-row items-center justify-between"
+      onPress={() => inputRef.current?.focus()}
+    >
+      {digits.map((digit, index) => {
+        const isActive = index === value.length;
+        const isFilled = digit !== "";
+
+        return (
+          <View
+            key={index}
+            className={[
+              "h-[72px] w-[48px] items-center justify-center rounded-2xl border-2",
+              isFilled
+                ? "border-transparent bg-white"
+                : isActive
+                  ? "border-[#123E7C] bg-white"
+                  : "border-transparent bg-[#E9EDF2]"
+            ].join(" ")}
+          >
+            <Text className="text-[32px] font-outfit-bold text-[#1B2D4A]">
+              {digit}
+            </Text>
+          </View>
+        );
+      })}
+
+      <TextInput
+        ref={inputRef}
+        value={value}
+        onChangeText={(text) =>
+          onChange(text.replace(/[^0-9]/g, "").slice(0, OTP_LENGTH))
+        }
+        keyboardType="number-pad"
+        maxLength={OTP_LENGTH}
+        autoFocus
+        caretHidden
+        className="absolute inset-0 opacity-0"
+      />
+    </Pressable>
+  );
+}
 
 export default function OtpVerificationScreen({
   onBack,
-  onVerifyComplete
+  onVerifyComplete,
+  phoneNumber = "+234 801 •••• 45"
 }: OtpVerificationScreenProps) {
-  const [code, setCode] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(56);
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const [otpCode, setOtpCode] = useState("");
+  const [resendSeconds, setResendSeconds] = useState(56);
 
   useEffect(() => {
-    if (secondsLeft <= 0) return;
+    if (resendSeconds <= 0) return;
 
-    const timer = setTimeout(() => setSecondsLeft((prev) => prev - 1), 1000);
+    const timer = setTimeout(() => setResendSeconds((prev) => prev - 1), 1000);
     return () => clearTimeout(timer);
-  }, [secondsLeft]);
+  }, [resendSeconds]);
 
-  const digits = Array.from(
-    { length: otpLength },
-    (_, index) => code[index] ?? ""
-  );
-  const isComplete = code.length === otpLength;
-
-  const handleChange = (value: string) => {
-    const nextValue = value.replace(/[^0-9]/g, "").slice(0, otpLength);
-    setCode(nextValue);
-  };
-
-  const focusIndex = Math.min(code.length, otpLength - 1);
+  const isOtpComplete = otpCode.length === OTP_LENGTH;
+  const resendLabel =
+    resendSeconds > 0
+      ? `Resend code in 00:${String(resendSeconds).padStart(2, "0")}`
+      : "Resend code";
 
   return (
     <KeyboardAvoidingView
@@ -64,94 +116,65 @@ export default function OtpVerificationScreen({
     >
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-6 pb-10 pt-12"
+        contentContainerClassName="px-6 pb-10 pt-14"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="mb-10 flex-row items-center justify-between">
-          <View className="w-[44px]" />
-          <Text className="text-[32px] font-medium text-[#1B2D4A]">9:41</Text>
-          <Text className="text-[22px] text-[#1B2D4A]">◔◔</Text>
-        </View>
-
-        <View className="mb-8 flex-row items-center">
+        <View className="flex-row items-center pt-6">
           <BackButton onPress={onBack} />
-          <View className="ml-3 mr-2 h-2.5 flex-1 overflow-hidden rounded-full bg-[#D7DDE5]">
-            <View className="h-full w-[60%] rounded-full bg-[#123E7C]" />
-          </View>
         </View>
 
-        <Text className="text-[36px] font-medium text-[#1B2D4A]">
-          Enter code
-        </Text>
-        <Text className="mt-3 text-[15px] leading-6 text-[#7A8795]">
-          We sent a 6-digit code to +234 801 •••• 45
-        </Text>
-
-        <View className="mt-8 flex-row items-center justify-between">
-          {digits.map((digit, index) => {
-            const isFilled = !!digit;
-            const isFocused = index === focusIndex && !isFilled;
-
-            return (
-              <Pressable
-                key={index}
-                onPress={() => inputRefs.current[index]?.focus()}
-                className={[
-                  "h-[72px] w-[48px] items-center justify-center rounded-2xl border bg-[#E9EDF2]",
-                  isFilled
-                    ? "border-[#123E7C] bg-[#F3F7FF]"
-                    : "border-[#D6DCE5]",
-                  isFocused ? "border-[#123E7C]" : ""
-                ].join(" ")}
-              >
-                <Text className="text-[32px] font-bold text-[#1B2D4A]">
-                  {digit}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <TextInput
-          autoFocus
-          value={code}
-          onChangeText={handleChange}
-          keyboardType="number-pad"
-          maxLength={otpLength}
-          textContentType="oneTimeCode"
-          style={{ position: "absolute", opacity: 0, width: 1, height: 1 }}
-          ref={(ref) => {
-            inputRefs.current[0] = ref;
-          }}
-        />
-
-        <Pressable
-          className="mt-8 items-center justify-center rounded-2xl border border-[#C3CAD4] bg-[#EEF2F6] px-4 py-4"
-          onPress={() => setCode("")}
-        >
-          <Text className="text-[18px] font-semibold text-[#1B2D4A]">
-            Resend code in 00:{String(secondsLeft).padStart(2, "0")}
+        <Animated.View entering={SlideInLeft.duration(400).springify()}>
+          <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+            Enter code
           </Text>
-        </Pressable>
+          <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
+            We sent a 6-digit code to {phoneNumber}
+          </Text>
 
-        <View className="mt-14">
+          <View className="mt-8">
+            <OtpInput value={otpCode} onChange={setOtpCode} />
+          </View>
+
           <Pressable
-            className={`items-center rounded-[28px] bg-[#123E7C] px-5 py-5 ${!isComplete ? "opacity-60" : ""}`}
-            disabled={!isComplete}
+            disabled={resendSeconds > 0}
+            className={[
+              "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] bg-[#EEF2F6] px-4 py-4",
+              resendSeconds > 0 ? "opacity-80" : ""
+            ].join(" ")}
             onPress={() => {
-              if (isComplete && onVerifyComplete) {
-                onVerifyComplete();
-              }
+              setOtpCode("");
+              setResendSeconds(56);
+              // TODO: trigger the actual resend request here.
             }}
           >
-            <View className="flex-row items-center justify-center">
-              <Text className="text-[24px] font-semibold text-white">
+            <Text className="text-[18px] font-outfit-semibold text-[#193F7F]">
+              {resendLabel}
+            </Text>
+          </Pressable>
+
+          <View className="mt-14">
+            <Pressable
+              accessibilityRole="button"
+              className={[
+                "flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-3 active:opacity-80",
+                !isOtpComplete ? "opacity-60" : ""
+              ].join(" ")}
+              disabled={!isOtpComplete}
+              onPress={() => {
+                if (isOtpComplete && onVerifyComplete) {
+                  onVerifyComplete();
+                }
+              }}
+            >
+              <Text className="text-[22px] font-outfit-semibold text-white">
                 Verify
               </Text>
-              <Text className="ml-2 text-[28px] font-light text-white">›</Text>
-            </View>
-          </Pressable>
-        </View>
+              <Text className="ml-2 text-[28px] font-light text-white">
+                ›
+              </Text>
+            </Pressable>
+          </View>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
