@@ -11,7 +11,8 @@
       "icon": "./assets/expo.icon",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs camera access to verify your identity for secure transactions."
-      }
+      },
+      "bundleIdentifier": "com.rasheed44.jaiz"
     },
     "android": {
       "adaptiveIcon": {
@@ -45,11 +46,12 @@
       ],
       "expo-asset",
       "@react-native-community/datetimepicker",
-      "expo-camera"
+      "expo-camera",
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
       "router": {},

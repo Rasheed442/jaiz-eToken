@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { View } from "react-native";
 import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming
 } from "react-native-reanimated";
 
 import AnimatedSplashScreen from "@/screens/AnimatedSplashScreen";
@@ -77,17 +77,19 @@ export default function HomeScreen() {
 
     if (screen === "personal-registration") {
       return (
-        <View className="flex-1 bg-[#0B1F3B]">
+        <View className="flex-1 bg-[#F3F5F7]">
           <PersonalRegistrationScreen
             onBack={() => {
               setTransitionDirection("backward");
               setScreen("welcome");
             }}
-            onContinue={() => {
+            onContinue={(values) => {
+              console.log("Registration values:", values);
               setTransitionDirection("forward");
               setScreen("otp");
             }}
-            onOtpComplete={() => {
+            onOtpComplete={(values) => {
+              console.log("OTP complete with values:", values);
               setTransitionDirection("forward");
               setScreen("facial-verification");
             }}
