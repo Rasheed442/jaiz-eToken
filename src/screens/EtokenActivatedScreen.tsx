@@ -1,6 +1,6 @@
 import { Check, Smartphone } from "lucide-react-native";
 import { useEffect } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Animated, {
     FadeIn,
     useAnimatedStyle,
@@ -12,12 +12,12 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type EtokenActivatedScreenProps = {
-  onGoToLogin: () => void;
+  onGoToDashboard: () => void;
   deviceLabel?: string;
 };
 
 export default function EtokenActivatedScreen({
-  onGoToLogin,
+  onGoToDashboard,
   deviceLabel = "This device"
 }: EtokenActivatedScreenProps) {
   const badgeScale = useSharedValue(0);
@@ -31,6 +31,15 @@ export default function EtokenActivatedScreen({
       )
     );
   }, []);
+
+  // Auto-redirect to dashboard after showing success screen
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onGoToDashboard();
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [onGoToDashboard]);
 
   const badgeStyle = useAnimatedStyle(() => ({
     transform: [{ scale: badgeScale.value }]
@@ -71,19 +80,6 @@ export default function EtokenActivatedScreen({
             </View>
           </Animated.View>
         </View>
-
-        <Animated.View entering={FadeIn.duration(400).delay(600)} className="pb-10">
-          <Pressable
-            accessibilityRole="button"
-            onPress={onGoToLogin}
-            className="flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-4 active:opacity-80"
-          >
-            <Text className="text-[18px] font-outfit-semibold text-white">
-              Go to Login
-            </Text>
-            <Text className="ml-2 text-[22px] font-light text-white">›</Text>
-          </Pressable>
-        </Animated.View>
       </View>
     </SafeAreaView>
   );

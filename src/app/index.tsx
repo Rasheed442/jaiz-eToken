@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { View } from "react-native";
 import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
 } from "react-native-reanimated";
 
 import AnimatedSplashScreen from "@/screens/AnimatedSplashScreen";
@@ -14,8 +14,8 @@ import DeregisterDeviceScreen from "@/screens/DeregisterDeviceScreen";
 import DeviceDeregisteredScreen from "@/screens/Devicederegisteredscreen";
 import DeviceDetailsScreen from "@/screens/Devicedetails";
 import DeviceRegisteredScreen from "@/screens/DeviceregisteredScreen";
-import EtokenActivatedScreen from "@/screens/EtokenActivatedScreen";
 import FacialVerificationScreen from "@/screens/FacialVerificationScreen";
+import ForgotPasscodeScreen from "@/screens/ForgotPasscodeScreen";
 import DashboardScreen from "@/screens/HomeScreen";
 import LoginScreen from "@/screens/LoginScreen";
 import OtpVerificationScreen from "@/screens/OtpVerificationScreen";
@@ -24,8 +24,9 @@ import RegisterDeviceScreen from "@/screens/RegisterDeviceScreen";
 import SubmittedForReviewScreen from "@/screens/SubmittedForReviewScreen";
 import VerificationDocumentScreen from "@/screens/VerificationDocumentScreen";
 import WelcomeScreen from "@/screens/WelcomeScreen";
+import { authStorage } from "../lib/auth/storage";
 
-type Screen = "welcome" | "personal-registration" | "corporate-registration" | "verification-documents" | "submitted-for-review" | "otp" | "facial-verification" | "create-profile" | "etoken-activated" | "login" | "home" | "device-details" | "register-device" | "device-otp" | "device-registered" | "deregister-device" | "device-deregistered" | "animated-splash";
+type Screen = "welcome" | "personal-registration" | "corporate-registration" | "verification-documents" | "submitted-for-review" | "otp" | "facial-verification" | "create-profile" | "etoken-activated" | "login" | "forgot-passcode" | "home" | "device-details" | "register-device" | "device-otp" | "device-registered" | "deregister-device" | "device-deregistered" | "animated-splash";
 type TransitionDirection = "forward" | "backward";
 
 function AnimatedScreen({
@@ -60,6 +61,48 @@ export default function HomeScreen() {
   const [transitionDirection, setTransitionDirection] =
     useState<TransitionDirection>("forward");
   const [username, setUsername] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [verificationData, setVerificationData] = useState<{
+    userPhotoHash: string;
+    userPhotoLink: string;
+    flowId: string;
+    internalVerificationRef: string;
+  } | undefined>();
+  const [accountNumber, setAccountNumber] = useState<string | undefined>();
+  const [nextScreen, setNextScreen] = useState<Screen | null>(null);
+  const [forgotPasscodeUsername, setForgotPasscodeUsername] = useState("");
+  const [forgotPasscodeAccountNumber, setForgotPasscodeAccountNumber] = useState("");
+
+  // Check if user has already registered and determine where to go
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const rememberedUsername = await authStorage.getUsername();
+      const rememberedAccountNumber = await authStorage.getAccountNumber();
+      const authData = await authStorage.getAuthData();
+
+      if (rememberedUsername) {
+        setUsername(rememberedUsername);
+      }
+      if (rememberedAccountNumber) {
+        setForgotPasscodeAccountNumber(rememberedAccountNumber);
+      }
+
+      // If user has auth data (tokens), they're logged in - go to home
+      if (authData) {
+        setCustomerName(authData.customerName);
+        setNextScreen("home");
+      }
+      // If user has remembered username but no tokens, they need to login
+      else if (rememberedUsername) {
+        setNextScreen("login");
+      }
+      // Otherwise, show welcome screen (new user)
+      else {
+        setNextScreen("welcome");
+      }
+    };
+    checkAuthStatus();
+  }, []);
 
   const renderScreen = () => {
     if (screen === "animated-splash") {
@@ -67,8 +110,10 @@ export default function HomeScreen() {
         <View className="flex-1 bg-[#050505]">
           <AnimatedSplashScreen
             onComplete={() => {
-              setTransitionDirection("forward");
-              setScreen("welcome");
+              if (nextScreen) {
+                setTransitionDirection("forward");
+                setScreen(nextScreen);
+              }
             }}
           />
         </View>
@@ -90,6 +135,8 @@ export default function HomeScreen() {
             }}
             onOtpComplete={(values) => {
               console.log("OTP complete with values:", values);
+              setVerificationData(values.verificationData);
+              setAccountNumber(values.accountNumber);
               setTransitionDirection("forward");
               setScreen("facial-verification");
             }}
@@ -204,6 +251,8 @@ export default function HomeScreen() {
               setTransitionDirection("forward");
               setScreen("create-profile");
             }}
+            verificationData={verificationData}
+            accountNumber={accountNumber}
             step={3}
             totalSteps={5}
           />
@@ -217,28 +266,24 @@ export default function HomeScreen() {
           <CreateProfileScreen
             onBack={() => {
               setTransitionDirection("backward");
-              setScreen("otp");
+              setScreen("facial-verification");
             }}
-            onProfileCreated={({ username: profileUsername }) => {
-              setUsername(profileUsername);
+            onProfileCreated={() => {
               setTransitionDirection("forward");
               setScreen("etoken-activated");
             }}
-            originalPasscode=""
-            progress={0.6}
-          />
-        </View>
-      );
-    }
-
-    if (screen === "etoken-activated") {
-      return (
-        <View className="flex-1 bg-[#F3F5F7]">
-          <EtokenActivatedScreen
-            onGoToLogin={() => {
-              setTransitionDirection("forward");
-              setScreen("login");
+            onGoToDashboard={async () => {
+              // Load stored auth data
+              const authData = await authStorage.getAuthData();
+              if (authData) {
+                setUsername(authData.username);
+                setCustomerName(authData.customerName);
+                setTransitionDirection("forward");
+                setScreen("home");
+              }
             }}
+            accountNumber={accountNumber || ""}
+            progress={0.8}
           />
         </View>
       );
@@ -249,28 +294,59 @@ export default function HomeScreen() {
         <LoginScreen
           username={username}
           onUsernameChange={setUsername}
-          onLogin={() => {
-            setTransitionDirection("forward");
-            setScreen("home");
+          onLogin={async () => {
+            // Load stored auth data after successful login
+            const authData = await authStorage.getAuthData();
+            if (authData) {
+              setCustomerName(authData.customerName);
+              setTransitionDirection("forward");
+              setScreen("home");
+            }
           }}
-          onForgotPasscode={() => {
-            setTransitionDirection("backward");
-            setScreen("welcome");
+          onForgotPasscode={(username: string) => {
+            setForgotPasscodeUsername(username);
+            setTransitionDirection("forward");
+            setScreen("forgot-passcode");
           }}
         />
+      );
+    }
+
+    if (screen === "forgot-passcode") {
+      return (
+        <View className="flex-1 bg-[#F3F5F7]">
+          <ForgotPasscodeScreen
+            onBack={() => {
+              setTransitionDirection("backward");
+              setScreen("login");
+            }}
+            onComplete={() => {
+              setTransitionDirection("backward");
+              setScreen("login");
+            }}
+            username={forgotPasscodeUsername}
+            accountNumber={forgotPasscodeAccountNumber}
+          />
+        </View>
       );
     }
 
     if (screen === "home") {
       return (
         <DashboardScreen
-          fullName={username || "Ibrahim Al-Hassan"}
+          fullName={customerName || username || "Ibrahim Al-Hassan"}
           cifLast4="4842"
           onManageDevice={() => {
             setTransitionDirection("forward");
             setScreen("device-details");
           }}
           onNotificationsPress={() => {}}
+          onLogout={async () => {
+            // Clear auth session but keep username remembered
+            await authStorage.clearAuthSession();
+            setTransitionDirection("backward");
+            setScreen("login");
+          }}
         />
       );
     }

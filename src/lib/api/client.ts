@@ -3,7 +3,39 @@
  * HTTP client for making API requests with proper error handling and configuration
  */
 
+import { authStorage } from '../auth/storage';
 import { API_CONFIG } from './config';
+
+export interface ApiError {
+  message: string;
+  errorCode?: string;
+  status?: number;
+}
+
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+/**
+ * Add a callback to be called when token refresh completes
+ */
+function subscribeTokenRefresh(callback: (token: string) => void) {
+  refreshSubscribers.push(callback);
+}
+
+/**
+ * Notify all subscribers that token has been refreshed
+ */
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+}
+
+/**
+ * Clear all subscribers
+ */
+function clearRefreshSubscribers() {
+  refreshSubscribers = [];
+}
 
 export interface ApiError {
   message: string;
@@ -21,6 +53,74 @@ class ApiClient {
   constructor(baseUrl: string = API_CONFIG.BASE_URL, timeout: number = API_CONFIG.TIMEOUT) {
     this.baseUrl = baseUrl;
     this.timeout = timeout;
+  }
+
+  /**
+   * Get authorization headers
+   */
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const accessToken = await authStorage.getAccessToken();
+    const username = await authStorage.getUsername();
+
+    const headers: Record<string, string> = {};
+
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    if (username) {
+      headers['X-Username'] = username;
+    }
+
+    return headers;
+  }
+
+  /**
+   * Refresh the access token
+   */
+  private async refreshAccessToken(): Promise<string | null> {
+    try {
+      const refreshToken = await authStorage.getRefreshToken();
+      if (!refreshToken) {
+        return null;
+      }
+
+      const response = await fetch(
+        `${this.baseUrl}/api/${API_CONFIG.API_VERSION}/auth/refresh`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refreshToken }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        // Update stored tokens
+        const authData = await authStorage.getAuthData();
+        if (authData) {
+          await authStorage.setAuthData({
+            ...authData,
+            accessToken: data.data.accessToken,
+            refreshToken: data.data.refreshToken,
+          });
+        }
+
+        return data.data.accessToken;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      return null;
+    }
   }
 
   /**
@@ -86,7 +186,7 @@ class ApiClient {
   }
 
   /**
-   * Generic request method with timeout
+   * Generic request method with timeout and automatic token refresh
    */
   private async request<T>(
     endpoint: string,
@@ -103,10 +203,14 @@ class ApiClient {
     });
 
     try {
+      // Add auth headers
+      const authHeaders = await this.getAuthHeaders();
+
       const response = await fetch(url, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders,
           ...options.headers,
         },
         signal: controller.signal,
@@ -114,6 +218,85 @@ class ApiClient {
 
       clearTimeout(timeoutId);
 
+      // Handle 401 Unauthorized - try to refresh token
+      if (response.status === 401) {
+        console.log("🔄 Token expired, attempting refresh...");
+
+        if (isRefreshing) {
+          // Wait for the refresh to complete
+          return new Promise((resolve, reject) => {
+            subscribeTokenRefresh(async (newToken) => {
+              try {
+                // Retry the original request with new token
+                const authHeaders = await this.getAuthHeaders();
+                const retryResponse = await fetch(url, {
+                  ...options,
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...authHeaders,
+                    ...options.headers,
+                  },
+                  signal: controller.signal,
+                });
+
+                if (!retryResponse.ok) {
+                  await this.handleResponse(retryResponse, url);
+                }
+
+                const data = await retryResponse.json();
+                resolve(data as T);
+              } catch (error) {
+                reject(error);
+              }
+            });
+          });
+        }
+
+        isRefreshing = true;
+
+        try {
+          const newToken = await this.refreshAccessToken();
+
+          if (newToken) {
+            isRefreshing = false;
+            onTokenRefreshed(newToken);
+
+            // Retry the original request with new token
+            const authHeaders = await this.getAuthHeaders();
+            const retryResponse = await fetch(url, {
+              ...options,
+              headers: {
+                'Content-Type': 'application/json',
+                ...authHeaders,
+                ...options.headers,
+              },
+              signal: controller.signal,
+            });
+
+            if (!retryResponse.ok) {
+              await this.handleResponse(retryResponse, url);
+            }
+
+            const data = await retryResponse.json();
+            console.log("✅ API Response data (after refresh):", data);
+            return data as T;
+          } else {
+            // Refresh failed, clear auth and redirect to login
+            isRefreshing = false;
+            clearRefreshSubscribers();
+            await authStorage.clearAuthSession();
+            throw {
+              message: 'Session expired. Please log in again.',
+              status: 401,
+            } as ApiError;
+          }
+        } catch (error) {
+          isRefreshing = false;
+          clearRefreshSubscribers();
+          await authStorage.clearAuthSession();
+          throw error;
+        }
+      }
 
       if (!response.ok) {
         await this.handleResponse(response, url);
@@ -183,3 +366,8 @@ export const apiClient = new ApiClient();
  * BVN API client instance (uses BVN base URL)
  */
 export const bvnApiClient = new ApiClient(API_CONFIG.BVN_BASE_URL);
+
+/**
+ * Onboarding API client instance (uses Onboarding base URL)
+ */
+export const onboardingApiClient = new ApiClient(API_CONFIG.ONBOARDING_BASE_URL);

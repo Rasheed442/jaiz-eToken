@@ -9,6 +9,8 @@ export const API_CONFIG = {
   // 'https://jaiz.elara-solutions.com/etoken',
   // BVN verification base URL
   BVN_BASE_URL: 'https://jaizmbank.jaizbankplc.com/etoken',
+  // Onboarding/Identity verification base URL
+  ONBOARDING_BASE_URL: 'https://jaizmbank.jaizbankplc.com/onboarding',
   
   // API version
   API_VERSION: 'v1',

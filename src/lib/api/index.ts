@@ -8,17 +8,28 @@ export { API_CONFIG, getApiUrl, getBvnUrl } from './config';
 
 // Types
 export type {
-  CustomerType,
-  InitiateRegistrationRequest,
-  InitiateRegistrationResponse,
-  BvnVerificationRequest,
-  BvnVerificationResponse,
-  ApiErrorResponse,
-  ApiSuccessResponse,
+    ApiErrorResponse,
+    ApiSuccessResponse, BvnVerificationRequest,
+    BvnVerificationResponse, CreateProfileRequest,
+    CreateProfileResponse, CustomerType,
+    DeviceRegistrationRequest,
+    DeviceRegistrationResponse,
+    ForgotPasscodeRequest,
+    ForgotPasscodeResponse, InitiateRegistrationRequest,
+    InitiateRegistrationResponse, LoginRequest,
+    LoginResponse, LogoutRequest,
+    LogoutResponse, MetaMapWebhookRequest,
+    MetaMapWebhookResponse, RefreshTokenRequest,
+    RefreshTokenResponse, ResetPasscodeRequest,
+    ResetPasscodeResponse, SecurityQuestion,
+    StartVerificationRequest,
+    StartVerificationResponse, VerificationStatusResponse,
+    VerifySecurityQuestionsRequest,
+    VerifySecurityQuestionsResponse
 } from './types';
 
 // Client
-export { apiClient, bvnApiClient } from './client';
+export { apiClient, bvnApiClient, onboardingApiClient } from './client';
 export type { ApiError } from './client';
 
 // API Services

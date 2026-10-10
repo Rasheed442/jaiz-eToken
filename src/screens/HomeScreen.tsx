@@ -1,13 +1,15 @@
+import { registrationApi } from "@/lib/api";
+import { authStorage } from "@/lib/auth/storage";
 import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
-import { Bell, Copy, RefreshCw, Smartphone } from "lucide-react-native";
+import { AlertCircle, Bell, Copy, LogOut, RefreshCw, Smartphone } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
 import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,6 +20,7 @@ type HomeScreenProps = {
   deviceLocation?: string;
   onManageDevice: () => void;
   onNotificationsPress: () => void;
+  onLogout: () => void;
   codeDurationSeconds?: number;
 };
 
@@ -34,11 +37,14 @@ export default function HomeScreen({
   deviceLocation = "Lagos",
   onManageDevice,
   onNotificationsPress,
+  onLogout,
   codeDurationSeconds = 30
 }: HomeScreenProps) {
   const [code, setCode] = useState(generateCode());
   const [secondsLeft, setSecondsLeft] = useState(codeDurationSeconds);
   const [copied, setCopied] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const progress = useSharedValue(1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -96,6 +102,29 @@ export default function HomeScreen({
     startTimer();
   };
 
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      const username = await authStorage.getUsername();
+      if (username) {
+        await registrationApi.logout({ username });
+      }
+    } catch (error) {
+      console.error("Logout API error:", error);
+      // Continue with local logout even if API fails
+    } finally {
+      await authStorage.clearAuthSession();
+      setIsLoggingOut(false);
+      setShowLogoutModal(false);
+      onLogout();
+    }
+  };
+
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
   const timeLabel = `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -121,14 +150,25 @@ export default function HomeScreen({
             </View>
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Notifications"
-            onPress={onNotificationsPress}
-            className="h-11 w-11 items-center justify-center rounded-full bg-white active:opacity-70"
-          >
-            <Bell size={20} color="#1B2D4A" />
-          </Pressable>
+          <View className="flex-row gap-2 items-center">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
+              onPress={onNotificationsPress}
+              className="h-11 w-11 items-center justify-center rounded-full bg-white active:opacity-70"
+            >
+              <Bell size={20} color="#1B2D4A" />
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Logout"
+              onPress={handleLogout}
+              className="h-11 w-11 items-center justify-center rounded-full bg-white active:opacity-70"
+            >
+              <LogOut size={20} color="#1B2D4A" />
+            </Pressable>
+          </View>
         </View>
 
         {/* OTP Card */}
@@ -269,6 +309,69 @@ export default function HomeScreen({
           </View>
         </View>
       </View>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !isLoggingOut && setShowLogoutModal(false)}
+      >
+        <View className="flex-1 items-center justify-center bg-black/50 px-6">
+          <View
+            className="w-full max-w-sm rounded-3xl bg-white p-6"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8
+            }}
+          >
+            <View className="h-16 w-16 items-center justify-center self-center rounded-full bg-[#FDECEC]">
+              <AlertCircle size={32} color="#B3261E" />
+            </View>
+
+            <Text className="mt-5 text-center text-[22px] font-outfit-semibold text-[#1B2D4A]">
+              Logout
+            </Text>
+
+            <Text className="mt-3 text-center text-[15px] font-outfit text-[#67787F] leading-[22px]">
+              Are you sure you want to logout? You'll need to enter your passcode to access your eToken again.
+            </Text>
+
+            <View className="mt-6 flex-row gap-3">
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => !isLoggingOut && setShowLogoutModal(false)}
+                disabled={isLoggingOut}
+                className="flex-1 h-12 flex-row items-center justify-center rounded-2xl border border-[#DDE3EA] bg-white active:opacity-70"
+              >
+                <Text className="text-[17px] font-outfit-semibold text-[#1B2D4A]">
+                  Cancel
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={confirmLogout}
+                disabled={isLoggingOut}
+                className={`flex-1 h-12 flex-row items-center justify-center rounded-2xl bg-[#B3261E] active:opacity-85 ${
+                  isLoggingOut ? "opacity-70" : ""
+                }`}
+              >
+                {isLoggingOut ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-[17px] font-outfit-semibold text-white">
+                    Logout
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

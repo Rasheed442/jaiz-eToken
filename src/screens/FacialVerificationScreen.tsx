@@ -1,20 +1,28 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { ChevronLeft } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import Animated, {
-  FadeIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming
+    FadeIn,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withTiming
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { registrationApi } from "../lib/api";
 
 type FacialVerificationScreenProps = {
   onBack: () => void;
   onVerificationComplete: (photoUri?: string) => void;
+  verificationData?: {
+    userPhotoHash: string;
+    userPhotoLink: string;
+    flowId: string;
+    internalVerificationRef: string;
+  };
+  accountNumber?: string;
   step?: number;
   totalSteps?: number;
 };
@@ -44,6 +52,8 @@ function BackButton({ onPress }: { onPress: () => void }) {
 export default function FacialVerificationScreen({
   onBack,
   onVerificationComplete,
+  verificationData,
+  accountNumber,
   step = 3,
   totalSteps = 5
 }: FacialVerificationScreenProps) {
@@ -51,6 +61,8 @@ export default function FacialVerificationScreen({
   const [scanningProgress, setScanningProgress] = useState(0);
   const [isScanning, setIsScanning] = useState(false);
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
   const scanLineY = useSharedValue(0);
 
@@ -85,15 +97,90 @@ export default function FacialVerificationScreen({
   const finishScan = async () => {
     // Capture a still frame to send to your verification backend
     try {
+      setIsProcessing(true);
+      setErrorMessage(null);
       const photo = await cameraRef.current?.takePictureAsync({
         quality: 0.7,
-        base64: false
+        base64: true,
       });
-      if (photo?.uri) setCapturedUri(photo.uri);
-      setTimeout(() => onVerificationComplete(photo?.uri), 500);
+
+      if (photo?.uri) {
+        setCapturedUri(photo.uri);
+
+        // Step 1: Call MetaMap webhook with verification data
+        if (verificationData) {
+          console.log("📡 Calling MetaMap webhook with data:", verificationData);
+          try {
+            const webhookPayload = {
+              eventName: "verification_completed",
+              flowId: verificationData.flowId,
+              identityStatus: "verified",
+              resource: "", // Resource URL would come from MetaMap
+              metadata: {
+                internalVerificationRef: verificationData.internalVerificationRef,
+                userPhotoHash: verificationData.userPhotoHash,
+                userPhotoLink: verificationData.userPhotoLink,
+              },
+              step: {
+                id: "step_facial_recognition",
+                status: "completed",
+              },
+            };
+            console.log("📤 MetaMap webhook payload:", webhookPayload);
+            await registrationApi.metaMapWebhook(webhookPayload);
+            console.log("✅ MetaMap webhook succeeded");
+          } catch (webhookError: any) {
+            console.error("❌ MetaMap webhook failed:", webhookError);
+            // Continue with liveness check even if webhook fails
+          }
+        } else {
+          console.warn("⚠️ No verificationData available, skipping MetaMap webhook");
+        }
+
+        // Step 2: Call liveness check endpoint
+        if (photo.base64 && accountNumber) {
+          try {
+            const deviceInfo = {
+              deviceModel: Platform.OS === 'ios' ? 'iPhone' : 'Android',
+              osVersion: Platform.Version as string,
+            };
+
+            const livenessPayload = {
+              accountNumber: accountNumber,
+              selfieBase64: photo.base64,
+              deviceModel: deviceInfo.deviceModel,
+              osVersion: deviceInfo.osVersion,
+            };
+            console.log("📤 Liveness check payload:", {
+              ...livenessPayload,
+              selfieBase64: livenessPayload.selfieBase64.substring(0, 50) + "..." // Log truncated base64
+            });
+            await registrationApi.performLivelinessCheck(livenessPayload);
+            console.log("✅ Liveness check succeeded");
+          } catch (livenessError: any) {
+            console.error("❌ Liveness check failed:", livenessError);
+            // Show error to user and don't continue
+            setErrorMessage(livenessError?.message || "Liveness check failed. Please try again.");
+            setScanningProgress(0);
+            setIsProcessing(false);
+            return;
+          }
+        } else {
+          console.warn("⚠️ Missing photo.base64 or accountNumber for liveness check");
+        }
+
+        // Success - navigate to next section
+        onVerificationComplete(photo.uri);
+      } else {
+        setErrorMessage("Failed to capture photo. Please try again.");
+        setScanningProgress(0);
+      }
     } catch (err) {
       console.warn("Failed to capture verification photo", err);
-      setTimeout(() => onVerificationComplete(), 500);
+      setErrorMessage("Failed to capture photo. Please try again.");
+      setScanningProgress(0);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -183,19 +270,30 @@ export default function FacialVerificationScreen({
                 </Text>
               </View>
             )}
+
+            {errorMessage && (
+              <View className="mt-6">
+                <Text className="text-center text-[15px] font-outfit text-rose-500">
+                  {errorMessage}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View className="mt-12">
             <Pressable
               accessibilityRole="button"
-              className="flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-4 active:opacity-80"
+              className={[
+                "flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-4 active:opacity-80",
+                (isScanning || isProcessing) ? "opacity-60" : ""
+              ].join(" ")}
               onPress={handleStartVerification}
-              disabled={isScanning}
+              disabled={isScanning || isProcessing}
             >
               <Text className="text-[18px] font-outfit-semibold text-white">
-                {isScanning ? "Scanning..." : "Start Verification"}
+                {isScanning ? "Scanning..." : isProcessing ? "Processing..." : "Start Verification"}
               </Text>
-              {!isScanning && <Text className="ml-2 text-[22px] font-light text-white">›</Text>}
+              {!isScanning && !isProcessing && <Text className="ml-2 text-[22px] font-light text-white">›</Text>}
             </Pressable>
           </View>
         </Animated.View>

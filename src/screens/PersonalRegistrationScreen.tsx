@@ -45,6 +45,12 @@ type PersonalRegistrationScreenProps = {
     domiciledBranch: string;
     dateOfBirth: string;
     otpVerified: boolean;
+    verificationData?: {
+      userPhotoHash: string;
+      userPhotoLink: string;
+      flowId: string;
+      internalVerificationRef: string;
+    };
   }) => void;
   step?: number;
   totalSteps?: number;
@@ -486,7 +492,7 @@ export default function PersonalRegistrationScreen({
         setCurrentStep(step + 1);
         setShowOtp(true);
         if (otpSent) {
-          setResendSeconds(56);
+          setResendSeconds(300); // 5 minutes
         }
       } else {
         // Handle validation errors from API
@@ -544,6 +550,39 @@ export default function PersonalRegistrationScreen({
       });
 
       if (response.success) {
+        // Call verification endpoint after successful OTP verification
+        let verificationData: {
+          userPhotoHash: string;
+          userPhotoLink: string;
+          flowId: string;
+          internalVerificationRef: string;
+        } | undefined;
+
+        try {
+          const verificationResponse = await registrationApi.startVerification({
+            bvn: bvn.trim(),
+            nin: "", // NIN is not available in this flow
+            userId: phoneNumber.trim(),
+          });
+
+          if (verificationResponse.success && verificationResponse.status === "SUCCESS") {
+            verificationData = {
+              userPhotoHash: verificationResponse.userPhotoHash,
+              userPhotoLink: verificationResponse.userPhotoLink,
+              flowId: verificationResponse.flowId,
+              internalVerificationRef: verificationResponse.metadata.internalVerificationRef,
+            };
+          }
+        } catch (verificationError: any) {
+          console.error("Verification start failed:", verificationError);
+          setToast({
+            message: verificationError?.message || "Verification failed. Please try again.",
+            type: "error"
+          });
+          setIsVerifyingOtp(false);
+          return;
+        }
+
         const formData = {
           accountNumber,
           bvn,
@@ -557,6 +596,7 @@ export default function PersonalRegistrationScreen({
           domiciledBranch,
           dateOfBirth,
           otpVerified: true,
+          verificationData,
         };
         if (onOtpComplete) {
           onOtpComplete(formData);
@@ -574,9 +614,11 @@ export default function PersonalRegistrationScreen({
   };
 
   const isOtpComplete = otpCode.length === OTP_LENGTH;
+  const minutes = Math.floor(resendSeconds / 60);
+  const seconds = resendSeconds % 60;
   const resendLabel =
     resendSeconds > 0
-      ? `Resend code in 00:${String(resendSeconds).padStart(2, "0")}`
+      ? `Resend code in ${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
       : "Resend code";
 
   return (
@@ -673,6 +715,7 @@ export default function PersonalRegistrationScreen({
                 value={firstName}
                 onChangeText={setFirstName}
                 icon={<User size={20} color="#5C6478" />}
+                editable={!bvnVerified}
               />
 
               <Field
@@ -681,6 +724,7 @@ export default function PersonalRegistrationScreen({
                 value={middleName}
                 onChangeText={setMiddleName}
                 icon={<User size={20} color="#5C6478" />}
+                editable={!bvnVerified}
               />
 
               <Field
@@ -689,6 +733,7 @@ export default function PersonalRegistrationScreen({
                 value={lastName}
                 onChangeText={setLastName}
                 icon={<User size={20} color="#5C6478" />}
+                editable={!bvnVerified}
               />
 
               <Field
@@ -698,6 +743,7 @@ export default function PersonalRegistrationScreen({
                 onChangeText={setPhoneNumber}
                 keyboardType="phone-pad"
                 icon={<Phone size={20} color="#5C6478" />}
+                editable={!bvnVerified}
               />
 
               <Field
@@ -708,6 +754,7 @@ export default function PersonalRegistrationScreen({
                 keyboardType="email-address"
                 autoCapitalize="none"
                 icon={<Mail size={20} color="#5C6478" />}
+                editable={!bvnVerified}
               />
 
               <Field
@@ -715,16 +762,20 @@ export default function PersonalRegistrationScreen({
                 placeholder="DD / MM / YYYY"
                 value={dateOfBirth}
                 onChangeText={setDateOfBirth}
-                editable={false}
+                editable={!bvnVerified}
                 onPress={() => {
-                  Keyboard.dismiss();
-                  setTempDate(dateOfBirth ? parseDate(dateOfBirth) : new Date());
-                  setShowDatePicker(true);
+                  if (!bvnVerified) {
+                    Keyboard.dismiss();
+                    setTempDate(dateOfBirth ? parseDate(dateOfBirth) : new Date());
+                    setShowDatePicker(true);
+                  }
                 }}
                 onFocus={() => {
-                  Keyboard.dismiss();
-                  setTempDate(dateOfBirth ? parseDate(dateOfBirth) : new Date());
-                  setShowDatePicker(true);
+                  if (!bvnVerified) {
+                    Keyboard.dismiss();
+                    setTempDate(dateOfBirth ? parseDate(dateOfBirth) : new Date());
+                    setShowDatePicker(true);
+                  }
                 }}
                 icon={<Calendar size={20} color="#5C6478" />}
               />
@@ -806,7 +857,7 @@ export default function PersonalRegistrationScreen({
                   });
                   if (response.success) {
                     console.log("OTP resent successfully");
-                    setResendSeconds(56);
+                    setResendSeconds(300); // 5 minutes
                   } else {
                     setToast({ message: response.message, type: "error" });
                   }
