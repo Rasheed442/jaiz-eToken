@@ -1,10 +1,21 @@
-import { ArrowRight, ChevronLeft, Smartphone, Trash2 } from "lucide-react-native";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { authStorage } from "@/lib/auth/storage";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
-import { authStorage } from "@/lib/auth/storage";
+import {
+  ArrowRight,
+  ChevronLeft,
+  Smartphone,
+  Trash2
+} from "lucide-react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type DeviceDetailsScreenProps = {
   onBack: () => void;
@@ -64,12 +75,13 @@ export default function DeviceDetailsScreen({
   onRegisterNewDevice,
   onDeregisterDevice,
   deviceModel,
-  location = "Unavailable",
-  registeredOn = "Unavailable",
-  lastUsed = "Unavailable",
+  location = "-----",
+  registeredOn = "----",
+  lastUsed = "------",
   isActive
 }: DeviceDetailsScreenProps) {
-  const [storedDetails, setStoredDetails] = useState<StoredDeviceDetails | null>(null);
+  const [storedDetails, setStoredDetails] =
+    useState<StoredDeviceDetails | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -79,14 +91,15 @@ export default function DeviceDetailsScreen({
       try {
         const [deviceId, accessToken] = await Promise.all([
           authStorage.getDeviceId(),
-          authStorage.getAccessToken(),
+          authStorage.getAccessToken()
         ]);
 
         if (isMounted) {
           setStoredDetails({
-            deviceModel: Device.modelName || Application.applicationName || "This device",
+            deviceModel:
+              Device.modelName || Application.applicationName || "This device",
             deviceId: deviceId || "Unavailable",
-            isActive: Boolean(accessToken && deviceId),
+            isActive: Boolean(accessToken && deviceId)
           });
         }
       } catch (error) {
@@ -97,15 +110,19 @@ export default function DeviceDetailsScreen({
     };
 
     loadDeviceDetails();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const displayedModel = deviceModel || storedDetails?.deviceModel || "This device";
+  const displayedModel =
+    deviceModel || storedDetails?.deviceModel || "This device";
   const displayedActive = isActive ?? storedDetails?.isActive ?? false;
   const fullDeviceId = storedDetails?.deviceId || "Unavailable";
-  const displayedDeviceId = fullDeviceId.length > 16
-    ? `${fullDeviceId.slice(0, 8)}…${fullDeviceId.slice(-4)}`
-    : fullDeviceId;
+  const displayedDeviceId =
+    fullDeviceId.length > 16
+      ? `${fullDeviceId.slice(0, 8)}…${fullDeviceId.slice(-4)}`
+      : fullDeviceId;
 
   return (
     <SafeAreaView className="flex-1 bg-[#F3F5F7]">
@@ -124,7 +141,9 @@ export default function DeviceDetailsScreen({
         {loading && (
           <View className="mt-5 flex-row items-center gap-2">
             <ActivityIndicator size="small" color="#123E7C" />
-            <Text className="text-[14px] font-outfit text-[#67787F]">Loading device details…</Text>
+            <Text className="text-[14px] font-outfit text-[#67787F]">
+              Loading device details…
+            </Text>
           </View>
         )}
 

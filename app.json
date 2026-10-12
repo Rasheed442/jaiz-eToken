@@ -10,7 +10,8 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
-        "NSCameraUsageDescription": "This app needs camera access to verify your identity for secure transactions."
+        "NSCameraUsageDescription": "This app needs camera access to verify your identity for secure transactions.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.rasheed44.jaiz"
     },
