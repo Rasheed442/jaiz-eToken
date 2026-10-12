@@ -1,11 +1,26 @@
 import { registrationApi } from "@/lib/api";
 import { authStorage } from "@/lib/auth/storage";
-import * as Application from 'expo-application';
+import * as Application from "expo-application";
 import * as Clipboard from "expo-clipboard";
+import * as Crypto from "expo-crypto";
 import { LinearGradient } from "expo-linear-gradient";
-import { AlertCircle, Bell, Copy, LogOut, RefreshCw, Smartphone } from "lucide-react-native";
+import {
+  AlertCircle,
+  Bell,
+  Copy,
+  LogOut,
+  RefreshCw,
+  Smartphone
+} from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Modal, Platform, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  Platform,
+  Pressable,
+  Text,
+  View
+} from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -26,10 +41,16 @@ type HomeScreenProps = {
   codeDurationSeconds?: number;
 };
 
-function generateTransactionReference() {
-  const timestamp = Date.now();
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `TXN${timestamp}${random}`;
+async function generateRandomSixDigitCode() {
+  let code = "";
+
+  while (code.length < 6) {
+    const [byte] = await Crypto.getRandomBytesAsync(1);
+    // Reject the six values above 249 so each decimal digit is equally likely.
+    if (byte < 250) code += String(byte % 10);
+  }
+
+  return code;
 }
 
 export default function HomeScreen({
@@ -51,7 +72,9 @@ export default function HomeScreen({
   const [isGenerating, setIsGenerating] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<"error" | "success" | "info">("error");
+  const [toastType, setToastType] = useState<"error" | "success" | "info">(
+    "error"
+  );
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [passcodeInput, setPasscodeInput] = useState("");
   const [isVerifyingPasscode, setIsVerifyingPasscode] = useState(false);
@@ -65,11 +88,14 @@ export default function HomeScreen({
     .slice(0, 2)
     .toUpperCase();
 
-  const showToastMessage = useCallback((message: string, type: "error" | "success" | "info" = "error") => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-  }, []);
+  const showToastMessage = useCallback(
+    (message: string, type: "error" | "success" | "info" = "error") => {
+      setToastMessage(message);
+      setToastType(type);
+      setShowToast(true);
+    },
+    []
+  );
 
   const generateToken = useCallback(async () => {
     try {
@@ -87,13 +113,13 @@ export default function HomeScreen({
         }
         if (deviceId) {
           await authStorage.setAuthData({
-            accessToken: await authStorage.getAccessToken() || "",
-            refreshToken: await authStorage.getRefreshToken() || "",
+            accessToken: (await authStorage.getAccessToken()) || "",
+            refreshToken: (await authStorage.getRefreshToken()) || "",
             username: username || "",
-            customerName: await authStorage.getCustomerName() || "",
-            accountNumber: await authStorage.getAccountNumber() || "",
+            customerName: (await authStorage.getCustomerName()) || "",
+            accountNumber: (await authStorage.getAccountNumber()) || "",
             passcode: passcode || "",
-            deviceId,
+            deviceId
           });
         }
       }
@@ -104,36 +130,22 @@ export default function HomeScreen({
         return;
       }
 
-      const payload = {
-        username,
-        passcode,
-        transactionReference: generateTransactionReference(),
-        deviceId: deviceId || "dev_"
-      };
-
-      const response = await registrationApi.generateToken(payload);
-
-      if (response.success && response.data) {
-        const tokenValue = response.data.tokenValue;
-        const formattedCode = tokenValue.replace(/(\d{3})(\d{3})/, "$1 $2");
-        setCode(formattedCode);
-        setTokenDuration(response.data.expiresInSeconds);
-        setSecondsLeft(response.data.expiresInSeconds);
-        progress.value = 1;
-        progress.value = withTiming(0, {
-          duration: response.data.expiresInSeconds * 1000,
-          easing: Easing.linear
-        });
-      } else {
-        showToastMessage(response.message || "Failed to generate token", "error");
-      }
+      const tokenValue = await generateRandomSixDigitCode();
+      setCode(tokenValue.replace(/(\d{3})(\d{3})/, "$1 $2"));
+      setTokenDuration(codeDurationSeconds);
+      setSecondsLeft(codeDurationSeconds);
+      progress.value = 1;
+      progress.value = withTiming(0, {
+        duration: codeDurationSeconds * 1000,
+        easing: Easing.linear
+      });
     } catch (error: any) {
       console.error("Token generation error:", error);
       showToastMessage(error?.message || "Failed to generate token", "error");
     } finally {
       setIsGenerating(false);
     }
-  }, [progress, showToastMessage]);
+  }, [codeDurationSeconds, progress, showToastMessage]);
 
   const startTimer = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -156,9 +168,14 @@ export default function HomeScreen({
   }, [tokenDuration, progress, generateToken]);
 
   useEffect(() => {
-    if (!showPasscodeModal) {
-      generateToken();
-    }
+    if (code !== "------") startTimer();
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [code, startTimer]);
+
+  useEffect(() => {
+    if (!showPasscodeModal) generateToken();
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -223,7 +240,7 @@ export default function HomeScreen({
           customerName: response.data.customerName,
           accountNumber: response.data.accountNumber,
           passcode: passcodeInput,
-          deviceId,
+          deviceId
         });
 
         setShowPasscodeModal(false);
@@ -355,15 +372,15 @@ export default function HomeScreen({
             </Text>
           </View>
 
-          {isGenerating ? (
+          {/* {isGenerating ? (
             <View className="mt-5 h-[52px] items-center justify-center">
               <ActivityIndicator size="large" color="#FFFFFF" />
             </View>
-          ) : (
-            <Text className="mt-5 pb-2 text-[42px] font-outfit-bold tracking-wider text-white">
-              {code}
-            </Text>
-          )}
+          ) : ( */}
+          <Text className="mt-5 pb-2 text-[42px] font-outfit-bold tracking-wider text-white">
+            {code}
+          </Text>
+          {/* )} */}
 
           <Text className="mt-3 text-[14px] font-outfit text-white">
             Your one-time verification code
@@ -490,7 +507,8 @@ export default function HomeScreen({
             </Text>
 
             <Text className="mt-3 text-center text-[15px] font-outfit text-[#67787F] leading-[22px]">
-              Are you sure you want to logout? You'll need to enter your passcode to access your eToken again.
+              Are you sure you want to logout? You'll need to enter your
+              passcode to access your eToken again.
             </Text>
 
             <View className="mt-6 flex-row gap-3">
@@ -531,7 +549,9 @@ export default function HomeScreen({
         visible={showPasscodeModal}
         transparent
         animationType="fade"
-        onRequestClose={() => !isVerifyingPasscode && setShowPasscodeModal(false)}
+        onRequestClose={() =>
+          !isVerifyingPasscode && setShowPasscodeModal(false)
+        }
       >
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
           <View
@@ -562,7 +582,9 @@ export default function HomeScreen({
                   <View
                     key={index}
                     className={`h-12 w-10 items-center justify-center rounded-lg border-2 ${
-                      passcodeInput[index] ? "border-[#123E7C] bg-[#EAF0FB]" : "border-[#DDE3EA]"
+                      passcodeInput[index]
+                        ? "border-[#123E7C] bg-[#EAF0FB]"
+                        : "border-[#DDE3EA]"
                     }`}
                   >
                     <Text className="text-[20px] font-outfit-semibold text-[#1B2D4A]">
@@ -575,7 +597,9 @@ export default function HomeScreen({
               <View className="mt-6 flex-row gap-3">
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => !isVerifyingPasscode && setShowPasscodeModal(false)}
+                  onPress={() =>
+                    !isVerifyingPasscode && setShowPasscodeModal(false)
+                  }
                   disabled={isVerifyingPasscode}
                   className="flex-1 h-12 flex-row items-center justify-center rounded-2xl border border-[#DDE3EA] bg-white active:opacity-70"
                 >
@@ -589,7 +613,9 @@ export default function HomeScreen({
                   onPress={handlePasscodeSubmit}
                   disabled={isVerifyingPasscode || passcodeInput.length !== 6}
                   className={`flex-1 h-12 flex-row items-center justify-center rounded-2xl bg-[#123E7C] active:opacity-85 ${
-                    isVerifyingPasscode || passcodeInput.length !== 6 ? "opacity-70" : ""
+                    isVerifyingPasscode || passcodeInput.length !== 6
+                      ? "opacity-70"
+                      : ""
                   }`}
                 >
                   {isVerifyingPasscode ? (
@@ -605,14 +631,18 @@ export default function HomeScreen({
 
             {/* Numeric Keypad */}
             <View className="mt-4">
-              {[["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]].map((row, rowIndex) => (
+              {[
+                ["1", "2", "3"],
+                ["4", "5", "6"],
+                ["7", "8", "9"]
+              ].map((row, rowIndex) => (
                 <View key={rowIndex} className="flex-row justify-center gap-4">
                   {row.map((num) => (
                     <Pressable
                       key={num}
                       onPress={() => {
                         if (passcodeInput.length < 6) {
-                          setPasscodeInput(prev => prev + num);
+                          setPasscodeInput((prev) => prev + num);
                         }
                       }}
                       className="h-14 w-20 items-center justify-center rounded-2xl bg-[#F8F8F8] active:bg-[#EAF0FB]"
@@ -639,7 +669,7 @@ export default function HomeScreen({
                 <Pressable
                   onPress={() => {
                     if (passcodeInput.length < 6) {
-                      setPasscodeInput(prev => prev + "0");
+                      setPasscodeInput((prev) => prev + "0");
                     }
                   }}
                   className="h-14 w-20 items-center justify-center rounded-2xl bg-[#F8F8F8] active:bg-[#EAF0FB]"
@@ -650,7 +680,7 @@ export default function HomeScreen({
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    setPasscodeInput(prev => prev.slice(0, -1));
+                    setPasscodeInput((prev) => prev.slice(0, -1));
                   }}
                   className="h-14 w-20 items-center justify-center rounded-2xl bg-[#F8F8F8] active:bg-[#EAF0FB]"
                 >

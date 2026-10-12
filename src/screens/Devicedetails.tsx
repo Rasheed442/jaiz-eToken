@@ -1,6 +1,10 @@
 import { ArrowRight, ChevronLeft, Smartphone, Trash2 } from "lucide-react-native";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Application from "expo-application";
+import * as Device from "expo-device";
+import { authStorage } from "@/lib/auth/storage";
 
 type DeviceDetailsScreenProps = {
   onBack: () => void;
@@ -11,6 +15,12 @@ type DeviceDetailsScreenProps = {
   registeredOn?: string;
   lastUsed?: string;
   isActive?: boolean;
+};
+
+type StoredDeviceDetails = {
+  deviceModel: string;
+  deviceId: string;
+  isActive: boolean;
 };
 
 function BackButton({ onPress }: { onPress: () => void }) {
@@ -53,12 +63,49 @@ export default function DeviceDetailsScreen({
   onBack,
   onRegisterNewDevice,
   onDeregisterDevice,
-  deviceModel = "iPhone 14 Pro",
-  location = "Lagos, Nigeria",
-  registeredOn = "21 Aug 2026",
-  lastUsed = "Today, 9:41 AM",
-  isActive = true
+  deviceModel,
+  location = "Unavailable",
+  registeredOn = "Unavailable",
+  lastUsed = "Unavailable",
+  isActive
 }: DeviceDetailsScreenProps) {
+  const [storedDetails, setStoredDetails] = useState<StoredDeviceDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDeviceDetails = async () => {
+      try {
+        const [deviceId, accessToken] = await Promise.all([
+          authStorage.getDeviceId(),
+          authStorage.getAccessToken(),
+        ]);
+
+        if (isMounted) {
+          setStoredDetails({
+            deviceModel: Device.modelName || Application.applicationName || "This device",
+            deviceId: deviceId || "Unavailable",
+            isActive: Boolean(accessToken && deviceId),
+          });
+        }
+      } catch (error) {
+        console.error("Unable to load device details:", error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadDeviceDetails();
+    return () => { isMounted = false; };
+  }, []);
+
+  const displayedModel = deviceModel || storedDetails?.deviceModel || "This device";
+  const displayedActive = isActive ?? storedDetails?.isActive ?? false;
+  const fullDeviceId = storedDetails?.deviceId || "Unavailable";
+  const displayedDeviceId = fullDeviceId.length > 16
+    ? `${fullDeviceId.slice(0, 8)}…${fullDeviceId.slice(-4)}`
+    : fullDeviceId;
 
   return (
     <SafeAreaView className="flex-1 bg-[#F3F5F7]">
@@ -74,6 +121,13 @@ export default function DeviceDetailsScreen({
           Manage the device linked to your eToken.
         </Text>
 
+        {loading && (
+          <View className="mt-5 flex-row items-center gap-2">
+            <ActivityIndicator size="small" color="#123E7C" />
+            <Text className="text-[14px] font-outfit text-[#67787F]">Loading device details…</Text>
+          </View>
+        )}
+
         {/* Hero device card */}
         <View className="mt-7 items-center rounded-3xl bg-white px-6 py-8">
           <View className="h-[88px] w-[88px] items-center justify-center rounded-full bg-[#E8EEFB]">
@@ -81,32 +135,33 @@ export default function DeviceDetailsScreen({
           </View>
 
           <Text className="mt-5 text-[20px] font-outfit-semibold text-[#1B2D4A]">
-            {deviceModel}
+            {displayedModel}
           </Text>
 
           <View
             className={`mt-4 flex-row items-center gap-2 rounded-full px-4 py-2 ${
-              isActive ? "bg-[#E7F7EE]" : "bg-[#FDECEC]"
+              displayedActive ? "bg-[#E7F7EE]" : "bg-[#FDECEC]"
             }`}
           >
             <View
               className={`h-2 w-2 rounded-full ${
-                isActive ? "bg-[#16A34A]" : "bg-[#D32F2F]"
+                displayedActive ? "bg-[#16A34A]" : "bg-[#D32F2F]"
               }`}
             />
             <Text
               className={`text-[15px] font-outfit-semibold ${
-                isActive ? "text-[#16A34A]" : "text-[#D32F2F]"
+                displayedActive ? "text-[#16A34A]" : "text-[#D32F2F]"
               }`}
             >
-              {isActive ? "Active" : "Inactive"}
+              {displayedActive ? "Active" : "Inactive"}
             </Text>
           </View>
         </View>
 
         {/* Details list */}
         <View className="mt-5 rounded-3xl bg-white px-5 py-1">
-          <DetailRow label="Model" value={deviceModel} />
+          <DetailRow label="Model" value={displayedModel} />
+          <DetailRow label="Device ID" value={displayedDeviceId} />
           <DetailRow label="Location" value={location} />
           <DetailRow label="Registered on" value={registeredOn} />
           <DetailRow label="Last used" value={lastUsed} isLast />
