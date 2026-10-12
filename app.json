@@ -16,6 +16,7 @@
       "bundleIdentifier": "com.rasheed44.jaiz"
     },
     "android": {
+      "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
