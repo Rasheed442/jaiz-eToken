@@ -709,3 +709,46 @@ export interface LogoutErrorResponse {
 export type LogoutResponse =
   | LogoutSuccessResponse
   | LogoutErrorResponse;
+
+/**
+ * Generate Token Request
+ */
+export interface GenerateTokenRequest {
+  username: string;
+  passcode: string;
+  transactionReference: string;
+  deviceId: string;
+}
+
+/**
+ * Generate Token Success Response
+ */
+export interface GenerateTokenSuccessResponse {
+  success: true;
+  message: string;
+  data: {
+    tokenValue: string;
+    generatedAt: string;
+    expiresAt: string;
+    expiresInSeconds: number;
+    transactionReference: string;
+  };
+  timestamp: string;
+}
+
+/**
+ * Generate Token Error Response
+ */
+export interface GenerateTokenErrorResponse {
+  success: false;
+  message: string;
+  errorCode?: string;
+  timestamp: string;
+}
+
+/**
+ * Generate Token Response (Union)
+ */
+export type GenerateTokenResponse =
+  | GenerateTokenSuccessResponse
+  | GenerateTokenErrorResponse;

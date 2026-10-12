@@ -3,15 +3,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Delete } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Modal,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View
+    ActivityIndicator,
+    Animated,
+    Easing,
+    Modal,
+    Platform,
+    Pressable,
+    Text,
+    TextInput,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
@@ -253,6 +253,8 @@ export default function LoginScreen({
           username: response.data.username,
           customerName: response.data.customerName,
           accountNumber: response.data.accountNumber,
+          passcode: passcodeToSubmit,
+          deviceId,
         });
 
         // Remember username

@@ -3,17 +3,17 @@ import * as Device from "expo-device";
 import { Check, ChevronLeft, Delete, Eye, EyeOff, ShieldCheck } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Animated,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Animated,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableWithoutFeedback,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
@@ -333,6 +333,8 @@ export default function CreateProfileScreen({
           username: activationResponse.data.username,
           customerName: activationResponse.data.customerName,
           accountNumber,
+          passcode,
+          deviceId,
         });
 
         setActivationMessage(activationResponse.message);

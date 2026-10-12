@@ -11,6 +11,8 @@ const REFRESH_TOKEN_KEY = 'jaiz_refresh_token';
 const USERNAME_KEY = 'jaiz_username';
 const CUSTOMER_NAME_KEY = 'jaiz_customer_name';
 const ACCOUNT_NUMBER_KEY = 'jaiz_account_number';
+const PASSCODE_KEY = 'jaiz_passcode';
+const DEVICE_ID_KEY = 'jaiz_device_id';
 
 export interface AuthData {
   accessToken: string;
@@ -18,6 +20,8 @@ export interface AuthData {
   username: string;
   customerName: string;
   accountNumber: string;
+  passcode?: string;
+  deviceId?: string;
 }
 
 export const authStorage = {
@@ -31,6 +35,12 @@ export const authStorage = {
       await SecureStore.setItemAsync(USERNAME_KEY, data.username);
       await SecureStore.setItemAsync(CUSTOMER_NAME_KEY, data.customerName);
       await SecureStore.setItemAsync(ACCOUNT_NUMBER_KEY, data.accountNumber);
+      if (data.passcode) {
+        await SecureStore.setItemAsync(PASSCODE_KEY, data.passcode);
+      }
+      if (data.deviceId) {
+        await SecureStore.setItemAsync(DEVICE_ID_KEY, data.deviceId);
+      }
     } catch (error) {
       console.error('Error storing auth data:', error);
       throw error;
@@ -98,6 +108,30 @@ export const authStorage = {
   },
 
   /**
+   * Get passcode
+   */
+  async getPasscode(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync(PASSCODE_KEY);
+    } catch (error) {
+      console.error('Error getting passcode:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Get device ID
+   */
+  async getDeviceId(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync(DEVICE_ID_KEY);
+    } catch (error) {
+      console.error('Error getting device ID:', error);
+      return null;
+    }
+  },
+
+  /**
    * Get all auth data
    */
   async getAuthData(): Promise<AuthData | null> {
@@ -107,6 +141,8 @@ export const authStorage = {
       const username = await SecureStore.getItemAsync(USERNAME_KEY) || '';
       const customerName = await SecureStore.getItemAsync(CUSTOMER_NAME_KEY) || '';
       const accountNumber = await SecureStore.getItemAsync(ACCOUNT_NUMBER_KEY) || '';
+      const passcode = await SecureStore.getItemAsync(PASSCODE_KEY) || undefined;
+      const deviceId = await SecureStore.getItemAsync(DEVICE_ID_KEY) || undefined;
 
       if (!accessToken || !refreshToken) {
         return null;
@@ -118,21 +154,11 @@ export const authStorage = {
         username,
         customerName,
         accountNumber,
+        passcode,
+        deviceId,
       };
     } catch (error) {
       console.error('Error getting auth data:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Get account number
-   */
-  async getAccountNumber(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(ACCOUNT_NUMBER_KEY);
-    } catch (error) {
-      console.error('Error getting account number:', error);
       return null;
     }
   },
@@ -147,6 +173,8 @@ export const authStorage = {
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
       await SecureStore.deleteItemAsync(CUSTOMER_NAME_KEY);
       await SecureStore.deleteItemAsync(ACCOUNT_NUMBER_KEY);
+      await SecureStore.deleteItemAsync(PASSCODE_KEY);
+      await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
       // Keep USERNAME_KEY for convenience
     } catch (error) {
       console.error('Error clearing auth session:', error);
@@ -164,6 +192,8 @@ export const authStorage = {
       await SecureStore.deleteItemAsync(USERNAME_KEY);
       await SecureStore.deleteItemAsync(CUSTOMER_NAME_KEY);
       await SecureStore.deleteItemAsync(ACCOUNT_NUMBER_KEY);
+      await SecureStore.deleteItemAsync(PASSCODE_KEY);
+      await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
     } catch (error) {
       console.error('Error clearing all data:', error);
       throw error;

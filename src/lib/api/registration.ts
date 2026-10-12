@@ -5,38 +5,40 @@
 
 import { apiClient, bvnApiClient, onboardingApiClient } from './client';
 import type {
-  ActivateEtokenResponse,
-  BvnVerificationRequest,
-  BvnVerificationResponse,
-  CreateProfileRequest,
-  CreateProfileResponse,
-  DeviceRegistrationRequest,
-  DeviceRegistrationResponse,
-  ForgotPasscodeRequest,
-  ForgotPasscodeResponse,
-  InitiateRegistrationRequest,
-  InitiateRegistrationResponse,
-  LivelinessCheckRequest,
-  LivelinessCheckResponse,
-  LoginRequest,
-  LoginResponse,
-  LogoutRequest,
-  LogoutResponse,
-  MetaMapWebhookRequest,
-  MetaMapWebhookResponse,
-  RefreshTokenRequest,
-  RefreshTokenResponse,
-  ResetPasscodeRequest,
-  ResetPasscodeResponse,
-  SendOtpRequest,
-  SendOtpResponse,
-  StartVerificationRequest,
-  StartVerificationResponse,
-  VerificationStatusResponse,
-  VerifyOtpRequest,
-  VerifyOtpResponse,
-  VerifySecurityQuestionsRequest,
-  VerifySecurityQuestionsResponse
+    ActivateEtokenResponse,
+    BvnVerificationRequest,
+    BvnVerificationResponse,
+    CreateProfileRequest,
+    CreateProfileResponse,
+    DeviceRegistrationRequest,
+    DeviceRegistrationResponse,
+    ForgotPasscodeRequest,
+    ForgotPasscodeResponse,
+    GenerateTokenRequest,
+    GenerateTokenResponse,
+    InitiateRegistrationRequest,
+    InitiateRegistrationResponse,
+    LivelinessCheckRequest,
+    LivelinessCheckResponse,
+    LoginRequest,
+    LoginResponse,
+    LogoutRequest,
+    LogoutResponse,
+    MetaMapWebhookRequest,
+    MetaMapWebhookResponse,
+    RefreshTokenRequest,
+    RefreshTokenResponse,
+    ResetPasscodeRequest,
+    ResetPasscodeResponse,
+    SendOtpRequest,
+    SendOtpResponse,
+    StartVerificationRequest,
+    StartVerificationResponse,
+    VerificationStatusResponse,
+    VerifyOtpRequest,
+    VerifyOtpResponse,
+    VerifySecurityQuestionsRequest,
+    VerifySecurityQuestionsResponse
 } from './types';
 
 /**
@@ -261,6 +263,19 @@ export const registrationApi = {
   ): Promise<LogoutResponse> {
     return apiClient.post<LogoutResponse>(
       'auth/logout',
+      data
+    );
+  },
+
+  /**
+   * Generate Token
+   * POST api/v1/token/generate
+   */
+  async generateToken(
+    data: GenerateTokenRequest
+  ): Promise<GenerateTokenResponse> {
+    return apiClient.post<GenerateTokenResponse>(
+      'token/generate',
       data
     );
   },
