@@ -165,7 +165,7 @@ export default function OtpVerificationScreen({
               }}
             >
               <Text className="text-[22px] font-outfit-semibold text-white">
-                Verif
+                Verify
               </Text>
               <Text className="ml-2 text-[28px] font-light text-white">›</Text>
             </Pressable>

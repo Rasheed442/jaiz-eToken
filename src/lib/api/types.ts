@@ -5,6 +5,43 @@
 
 export type CustomerType = 'PERSONAL' | 'CORPORATE';
 
+export interface AccountVerificationRequest {
+  accountNumber: string;
+  customerType: CustomerType;
+}
+
+export interface AccountVerificationData {
+  id?: number | string;
+  accountNumber: string;
+  bvn?: string | null;
+  cif?: string | null;
+  middleName?: string | null;
+  dateOfBirth?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
+  customerType?: CustomerType | null;
+  accountStatus?: string | null;
+  branchCode?: string | null;
+  domiciledBranch?: string | null;
+  createdAt?: string | null;
+}
+
+export type AccountVerificationResponse =
+  | {
+      success: true;
+      message: string;
+      data: AccountVerificationData;
+      timestamp: string;
+    }
+  | {
+      success: false;
+      message: string;
+      errorCode?: string;
+      timestamp?: string;
+    };
+
 /**
  * Initiate Registration Request
  */

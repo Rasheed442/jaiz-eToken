@@ -55,6 +55,8 @@ function BackButton({ onPress }: { onPress: () => void }) {
 
 const CONFIRM_INTERVAL_MS = 5000;
 const MAX_CONFIRM_ATTEMPTS = 60;
+const CLIENT_ID = "69280f8a987c3d12acd4f53a";
+const FLOW_ID = "69284636fc72cd31a69a66c0";
 
 export default function FacialVerificationScreen({
   onBack,
@@ -182,14 +184,6 @@ export default function FacialVerificationScreen({
       return;
     }
 
-    const clientId = "6ace8e945c0f9012f1d318e8";
-    if (!clientId) {
-      setErrorMessage(
-        "MetaMap is not configured. Add EXPO_PUBLIC_METAMAP_CLIENT_ID to the build environment."
-      );
-      return;
-    }
-
     const metaMapModule = NativeModules.MetaMapRNSdk;
     if (!metaMapModule?.showFlow) {
       setErrorMessage(
@@ -220,7 +214,6 @@ export default function FacialVerificationScreen({
         verificationData.metadata?.internalVerificationRef ||
         verificationData.verificationReference;
       if (
-        !verificationData.flowId ||
         !verificationData.userPhotoLink ||
         !verificationData.userPhotoHash ||
         !internalVerificationRef
@@ -232,7 +225,7 @@ export default function FacialVerificationScreen({
 
       setLiveliness(verificationData);
       setIsFlowOpen(true);
-      metaMapModule.showFlow(clientId, verificationData.flowId, {
+      metaMapModule.showFlow(CLIENT_ID, FLOW_ID, {
         internalVerificationRef,
         userPhotoLink: verificationData.userPhotoLink,
         userPhotoLinkHash: verificationData.userPhotoHash

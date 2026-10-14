@@ -5,6 +5,8 @@
 
 import { apiClient, bvnApiClient, onboardingApiClient } from './client';
 import type {
+    AccountVerificationRequest,
+    AccountVerificationResponse,
     ActivateEtokenResponse,
     BvnVerificationRequest,
     BvnVerificationResponse,
@@ -47,6 +49,16 @@ import type {
  * Registration API Service
  */
 export const registrationApi = {
+  /** Verify an account and retrieve its registration details. */
+  async verifyAccount(
+    data: AccountVerificationRequest
+  ): Promise<AccountVerificationResponse> {
+    return apiClient.post<AccountVerificationResponse>(
+      'register/account-verify',
+      data
+    );
+  },
+
   /**
    * Initiate registration
    * POST api/v1/register/initiate

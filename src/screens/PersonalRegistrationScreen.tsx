@@ -1,5 +1,4 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Calendar, ChevronLeft, Hash, User } from "lucide-react-native";
+import { ChevronLeft, Hash } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -67,14 +66,16 @@ type FieldProps = {
 };
 
 const OTP_LENGTH = 6;
-const BVN_LENGTH = 11;
 
 function maskPhoneNumber(value: string) {
   const characters = [...value];
-  const digitIndexes = characters.reduce<number[]>((indexes, character, index) => {
-    if (/\d/.test(character)) indexes.push(index);
-    return indexes;
-  }, []);
+  const digitIndexes = characters.reduce<number[]>(
+    (indexes, character, index) => {
+      if (/\d/.test(character)) indexes.push(index);
+      return indexes;
+    },
+    []
+  );
 
   digitIndexes.slice(-3).forEach((index) => {
     characters[index] = "*";
@@ -248,7 +249,7 @@ function OtpInput({
             ].join(" ")}
           >
             <Text className="text-[32px] font-outfit-bold text-[#1B2D4A]">
-              {digit}
+              {isFilled ? "*" : ""}
             </Text>
           </View>
         );
@@ -262,6 +263,8 @@ function OtpInput({
         }
         keyboardType="number-pad"
         maxLength={OTP_LENGTH}
+        secureTextEntry
+        accessibilityLabel="Verification code"
         autoFocus
         caretHidden
         className="absolute inset-0 opacity-0"
@@ -289,15 +292,12 @@ export default function PersonalRegistrationScreen({
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [showError, setShowError] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [tempDate, setTempDate] = useState<Date | null>(null);
   const [showOtp, setShowOtp] = useState(false);
   const [currentStep, setCurrentStep] = useState(step);
   const [otpCode, setOtpCode] = useState("");
+  const [verifiedRegistrationToken, setVerifiedRegistrationToken] = useState("");
   const [resendSeconds, setResendSeconds] = useState(0);
-  const [isVerifyingBvn, setIsVerifyingBvn] = useState(false);
-  const [bvnError, setBvnError] = useState<string | null>(null);
-  const [bvnVerified, setBvnVerified] = useState(false);
+  const [isVerifyingAccount, setIsVerifyingAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [toast, setToast] = useState<{
@@ -325,267 +325,101 @@ export default function PersonalRegistrationScreen({
     }
   }, [resendSeconds]);
 
-  const formatDate = (date: Date) => {
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-
-    return `${day} / ${month} / ${year}`;
-  };
-
-  const parseDate = (value: string) => {
-    const [day, month, year] = value.split("/").map((part) => part.trim());
-
-    if (!day || !month || !year) {
-      return new Date();
-    }
-
-    const parsedDay = Number(day);
-    const parsedMonth = Number(month) - 1;
-    const parsedYear = Number(year);
-
-    if (
-      Number.isNaN(parsedDay) ||
-      Number.isNaN(parsedMonth) ||
-      Number.isNaN(parsedYear)
-    ) {
-      return new Date();
-    }
-
-    return new Date(parsedYear, parsedMonth, parsedDay);
-  };
-
-  const formatDateForApi = (value: string) => {
-    // Convert from "DD / MM / YYYY" to "YYYY-MM-DD" format for API
-    const [day, month, year] = value.split("/").map((part) => part.trim());
-    if (!day || !month || !year) {
-      return "";
-    }
-    return `${year}-${month}-${day}`;
-  };
-
-  // Verify the BVN once the user has entered all 11 digits.
-  // The input is capped at BVN_LENGTH, so reaching that length means the user
-  // has finished typing and no debounce is needed. The `cancelled` flag makes
-  // sure a slow response for an old BVN can never overwrite the state of a
-  // newer one.
-  useEffect(() => {
-    setBvnVerified(false);
-    setBvnError(null);
-
-    if (bvn.length !== BVN_LENGTH) {
-      setIsVerifyingBvn(false);
-      return;
-    }
-
-    let cancelled = false;
-    setIsVerifyingBvn(true);
-
-    registrationApi
-      .verifyBvn({ bvn })
-      .then((response) => {
-        if (cancelled) return;
-        if (response.success && response.data) {
-          setBvnVerified(true);
-          // Prefill fields from BVN verification response
-          if (response.data.firstName) setFirstName(response.data.firstName);
-          if (response.data.lastName) setLastName(response.data.lastName);
-          if (response.data.middleName) setMiddleName(response.data.middleName);
-          if (response.data.email) setEmail(response.data.email.toLowerCase());
-          if (response.data.phoneNumber)
-            setPhoneNumber(response.data.phoneNumber);
-          if (response.data.dateOfBirth) {
-            // Convert date format from "14-Jun-2002" to "DD / MM / YYYY"
-            const dob = response.data.dateOfBirth;
-            const parts = dob.split("-");
-            if (parts.length === 3) {
-              const day = parts[0].padStart(2, "0");
-              const monthMap: Record<string, string> = {
-                Jan: "01",
-                Feb: "02",
-                Mar: "03",
-                Apr: "04",
-                May: "05",
-                Jun: "06",
-                Jul: "07",
-                Aug: "08",
-                Sep: "09",
-                Oct: "10",
-                Nov: "11",
-                Dec: "12"
-              };
-              const month = monthMap[parts[1]] || parts[1];
-              const year = parts[2];
-              setDateOfBirth(`${day} / ${month} / ${year}`);
-            }
-          }
-          if (response.data.branchCode) setBranchCode(response.data.branchCode);
-          if (response.data.domiciledBranch)
-            setDomiciledBranch(response.data.domiciledBranch);
-          if (response.data.accountNumber)
-            setAccountNumber(response.data.accountNumber);
-        } else {
-          // Handle failed BVN verification (success: false)
-          setBvnError(response.message || "BVN verification failed");
-        }
-      })
-      .catch((error: any) => {
-        if (cancelled) return;
-        // Show the actual error message from the API response
-        const errorMessage =
-          error?.message || "Failed to verify BVN. Please try again.";
-        setBvnError(errorMessage);
-        setBvnVerified(false);
-      })
-      .finally(() => {
-        if (!cancelled) setIsVerifyingBvn(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [bvn]);
-
   const handleContinue = async () => {
-    // Dismiss keyboard
     Keyboard.dismiss();
-
-    // Ignore taps while the BVN request is still in flight.
-    if (isVerifyingBvn || isSubmitting) return;
-
     const accountValue = accountNumber.trim();
-    const bvnValue = bvn.trim();
-    const firstNameValue = firstName.trim();
-    const lastNameValue = lastName.trim();
-    const middleNameValue = middleName.trim();
-    const branchCodeValue = branchCode.trim();
-    const domiciledBranchValue = domiciledBranch.trim();
-    const dobValue = dateOfBirth.trim();
-
-    const isValid =
-      accountValue.length === 10 &&
-      bvnValue.length === BVN_LENGTH &&
-      lastNameValue.length > 0 &&
-      dobValue.length > 0 &&
-      bvnVerified;
-
-    if (!isValid) {
-      if (!bvnVerified && bvnValue.length === BVN_LENGTH) {
-        setBvnError(
-          (prev) => prev ?? "BVN could not be verified. Please check it."
-        );
-      } else {
-        setShowError(true);
-      }
+    if (isVerifyingAccount || isSubmitting) return;
+    if (accountValue.length !== 10) {
+      setShowError(true);
       return;
     }
 
     setShowError(false);
-    setCurrentStep(step + 1);
-    setShowDetails(true);
+    setIsVerifyingAccount(true);
+    try {
+      const response = await registrationApi.verifyAccount({
+        accountNumber: accountValue,
+        customerType: "PERSONAL"
+      });
+
+      if (!response.success) {
+        throw new Error(response.message || "Account verification failed.");
+      }
+
+      const details = response.data;
+      setAccountNumber(details.accountNumber || accountValue);
+      setBvn(details.bvn || "");
+      setFirstName(details.firstName || "");
+      setMiddleName(details.middleName || "");
+      setLastName(details.lastName || "");
+      setPhoneNumber(details.phoneNumber || "");
+      setEmail(details.email?.toLowerCase() || "");
+      setBranchCode(details.branchCode || "");
+      setDomiciledBranch(details.domiciledBranch || "");
+      if (details.dateOfBirth) {
+        const [year, month, day] = details.dateOfBirth.split("T")[0].split("-");
+        if (year && month && day) {
+          setDateOfBirth(`${day} / ${month} / ${year}`);
+        }
+      }
+
+      const otpResponse = await registrationApi.sendOtp({
+        accountNumber: details.accountNumber || accountValue,
+        tokenType: "REGISTRATION_OTP"
+      });
+      if (!otpResponse.success) {
+        throw new Error(otpResponse.message || "Failed to send verification code.");
+      }
+
+      setCurrentStep(step + 1);
+      setOtpCode("");
+      setResendSeconds(300);
+      setShowOtp(true);
+    } catch (error) {
+      setToast({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Account verification failed. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setIsVerifyingAccount(false);
+    }
   };
 
   const handleSubmitDetails = async () => {
     if (isSubmitting) return;
-    const accountValue = accountNumber.trim();
-    const bvnValue = bvn.trim();
-    const firstNameValue = firstName.trim();
-    const lastNameValue = lastName.trim();
-    const middleNameValue = middleName.trim();
-    const branchCodeValue = branchCode.trim();
-    const domiciledBranchValue = domiciledBranch.trim();
-    const dobValue = dateOfBirth.trim();
+    if (!verifiedRegistrationToken) {
+      setToast({
+        message: "Verify the code before confirming your details.",
+        type: "error"
+      });
+      return;
+    }
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        accountNumber: accountValue,
-        bvn: bvnValue,
+      const formData = {
+        accountNumber,
+        bvn,
         customerType: "PERSONAL" as const,
-        phoneNumber: phoneNumber.trim(),
-        email: email.trim().toLowerCase(),
-        firstName: firstNameValue,
-        lastName: lastNameValue,
-        middleName: middleNameValue,
-        branchCode: branchCodeValue,
-        domiciledBranch: domiciledBranchValue,
-        dateOfBirth: formatDateForApi(dobValue)
+        phoneNumber,
+        email,
+        firstName,
+        lastName,
+        middleName,
+        branchCode,
+        domiciledBranch,
+        dateOfBirth,
+        otpVerified: true,
+        registrationToken: verifiedRegistrationToken
       };
-      console.log("Sending registration payload:", payload);
-      const response = await registrationApi.initiateRegistration(payload);
-
-      if (response.success) {
-        // Send OTP after successful registration initiation
-        let otpSent = false;
-        try {
-          const otpResponse = await registrationApi.sendOtp({
-            accountNumber: accountValue,
-            tokenType: "REGISTRATION_OTP"
-          });
-          console.log("OTP sent:", otpResponse);
-          otpSent = true;
-        } catch (otpError: any) {
-          console.error("Failed to send OTP:", otpError);
-          // Continue to OTP screen even if OTP send fails
-          setToast({
-            message:
-              otpError?.message || "Failed to send OTP. Please try resending.",
-            type: "error"
-          });
-        }
-
-        setCurrentStep(step + 2);
-        setShowOtp(true);
-        if (otpSent) {
-          setResendSeconds(300); // 5 minutes
-        }
+      if (onOtpComplete) {
+        onOtpComplete(formData);
       } else {
-        // Handle validation errors from API
-        let errorMessages =
-          response.message || "Registration failed. Please check your inputs.";
-
-        // If there are field-specific validation errors, extract and display them
-        if (
-          response.data &&
-          typeof response.data === "object" &&
-          !("referenceId" in response.data)
-        ) {
-          const fieldErrors = Object.entries(response.data)
-            .map(([field, message]) => {
-              const msg =
-                typeof message === "string" ? message : JSON.stringify(message);
-              return msg;
-            })
-            .join("\n");
-          if (fieldErrors) {
-            errorMessages = fieldErrors;
-          }
-        }
-
-        console.log("Setting toast with error:", errorMessages);
-        setToast({ message: String(errorMessages), type: "error" });
+        onContinue(formData);
       }
-    } catch (error: any) {
-      // Handle API errors
-      let errorMessage =
-        error?.message || "Registration failed. Please try again.";
-
-      // If there are field-specific validation errors in the error data
-      if (error?.data && typeof error.data === "object") {
-        const fieldErrors = Object.entries(error.data)
-          .map(([field, message]) => {
-            const msg =
-              typeof message === "string" ? message : JSON.stringify(message);
-            return msg;
-          })
-          .join("\n");
-        if (fieldErrors) {
-          errorMessage = fieldErrors;
-        }
-      }
-
-      console.log("Setting toast with catch error:", errorMessage);
-      setToast({ message: String(errorMessage), type: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -606,32 +440,17 @@ export default function PersonalRegistrationScreen({
         const registrationToken = response.data;
         if (!registrationToken) {
           setToast({
-            message: "OTP verified, but the registration token was missing. Please try again.",
+            message:
+              "OTP verified, but the registration token was missing. Please try again.",
             type: "error"
           });
           return;
         }
 
-        const formData = {
-          accountNumber,
-          bvn,
-          customerType: "PERSONAL" as const,
-          phoneNumber,
-          email,
-          firstName,
-          lastName,
-          middleName,
-          branchCode,
-          domiciledBranch,
-          dateOfBirth,
-          otpVerified: true,
-          registrationToken
-        };
-        if (onOtpComplete) {
-          onOtpComplete(formData);
-        } else {
-          onContinue(formData);
-        }
+        setVerifiedRegistrationToken(registrationToken);
+        setCurrentStep(step + 2);
+        setShowOtp(false);
+        setShowDetails(true);
       } else {
         setToast({ message: response.message, type: "error" });
       }
@@ -675,7 +494,10 @@ export default function PersonalRegistrationScreen({
               showOtp
                 ? () => setShowOtp(false)
                 : showDetails
-                  ? () => setShowDetails(false)
+                  ? () => {
+                      setShowDetails(false);
+                      setShowOtp(true);
+                    }
                   : onBack
             }
           />
@@ -695,8 +517,8 @@ export default function PersonalRegistrationScreen({
               Personal details
             </Text>
             <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
-              Enter your account information exactly as it appears with the
-              bank.
+              Enter your account number to securely retrieve your registered
+              details.
             </Text>
 
             <View className="mt-7 gap-6">
@@ -704,27 +526,16 @@ export default function PersonalRegistrationScreen({
                 label="Account Number"
                 placeholder="10-digit account number"
                 value={accountNumber}
-                onChangeText={(v) =>
-                  setAccountNumber(v.replace(/[^0-9]/g, "").slice(0, 10))
-                }
+                onChangeText={(v) => {
+                  setAccountNumber(v.replace(/[^0-9]/g, "").slice(0, 10));
+                  setShowError(false);
+                }}
                 keyboardType="number-pad"
                 maxLength={10}
-                icon={<Hash size={20} color="#5C6478" />}
-              />
-
-              <Field
-                label="BVN"
-                placeholder="11-digit Bank Verification Number"
-                value={bvn}
-                onChangeText={(v) =>
-                  setBvn(v.replace(/[^0-9]/g, "").slice(0, BVN_LENGTH))
-                }
-                keyboardType="number-pad"
-                maxLength={BVN_LENGTH}
                 icon={
-                  isVerifyingBvn ? (
+                  isVerifyingAccount ? (
                     <ActivityIndicator size="small" color="#123E7C" />
-                  ) : bvnVerified ? (
+                  ) : showDetails ? (
                     <View className="h-5 w-5 items-center justify-center rounded-full bg-green-500">
                       <Text className="text-[10px] font-bold text-white">
                         ✓
@@ -735,89 +546,28 @@ export default function PersonalRegistrationScreen({
                   )
                 }
                 helperText={
-                  isVerifyingBvn
-                    ? "Verifying your BVN..."
-                    : bvnError
-                      ? bvnError
-                      : bvnVerified
-                        ? "BVN verified successfully"
-                        : "We use this only to verify your identity."
-                }
-                helperTextColor={
-                  bvnError
-                    ? "text-rose-500"
-                    : bvnVerified
-                      ? "text-green-600"
-                      : undefined
+                  isVerifyingAccount ? "Validating account number..." : undefined
                 }
               />
-
-              <Field
-                label="Last Name"
-                placeholder="As shown on your account"
-                value={lastName}
-                onChangeText={setLastName}
-                icon={<User size={20} color="#5C6478" />}
-              />
-
-              <Field
-                label="Date of Birth"
-                placeholder="DD / MM / YYYY"
-                value={dateOfBirth}
-                onChangeText={setDateOfBirth}
-                editable={false}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setTempDate(
-                    dateOfBirth ? parseDate(dateOfBirth) : new Date()
-                  );
-                  setShowDatePicker(true);
-                }}
-                onFocus={() => {
-                  Keyboard.dismiss();
-                  setTempDate(
-                    dateOfBirth ? parseDate(dateOfBirth) : new Date()
-                  );
-                  setShowDatePicker(true);
-                }}
-                icon={<Calendar size={20} color="#5C6478" />}
-              />
-
-              {/* <Field
-                label="Branch Code"
-                placeholder="e.g., 001"
-                value={branchCode}
-                onChangeText={(v) => setBranchCode(v.replace(/[^0-9]/g, ""))}
-                keyboardType="number-pad"
-                icon={<Hash size={20} color="#5C6478" />}
-              />
-
-              <Field
-                label="Domiciled Branch"
-                placeholder="e.g., Lagos Main Branch"
-                value={domiciledBranch}
-                onChangeText={setDomiciledBranch}
-                icon={<User size={20} color="#5C6478" />}
-              /> */}
             </View>
 
             {showError && (
               <Text className="mt-4 text-sm font-outfit text-rose-500">
-                Account number, BVN, last name and date of birth are required.
+                Enter a valid 10-digit account number.
               </Text>
             )}
 
             <View className="mt-10">
               <Pressable
                 accessibilityRole="button"
-                disabled={isVerifyingBvn || isSubmitting}
+                disabled={isVerifyingAccount || isSubmitting}
                 className={[
                   "flex-row items-center justify-center rounded-2xl bg-[#123E7C] px-5 py-4 active:opacity-80",
-                  isVerifyingBvn || isSubmitting ? "opacity-60" : ""
+                  isVerifyingAccount || isSubmitting ? "opacity-60" : ""
                 ].join(" ")}
                 onPress={handleContinue}
               >
-                {isSubmitting ? (
+                {isVerifyingAccount ? (
                   <ActivityIndicator size="small" color="white" />
                 ) : (
                   <>
@@ -877,7 +627,7 @@ export default function PersonalRegistrationScreen({
               </Text>
             </Pressable>
 
-            <View className="mt-14">
+            <View className="mt-4">
               <Pressable
                 accessibilityRole="button"
                 className={[
@@ -908,8 +658,8 @@ export default function PersonalRegistrationScreen({
               Confirm your details
             </Text>
             <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
-              We filled these details from your BVN. Review them before
-              continuing.
+              We retrieved these details using your account number. Review
+              them before continuing.
             </Text>
             <View className="mt-7 gap-5">
               {[
@@ -975,49 +725,6 @@ export default function PersonalRegistrationScreen({
           </Animated.View>
         )}
 
-        {showDatePicker && (
-          <View className="absolute inset-0 justify-end bg-[#0B1F3B]/30">
-            <Pressable
-              className="flex-1"
-              onPress={() => setShowDatePicker(false)}
-            />
-
-            <View className="rounded-t-[28px] bg-[#F3F5F7] px-4 pb-8 pt-4">
-              <View className="mb-3 flex-row items-center justify-between px-1">
-                <Text className="text-[16px] font-outfit-medium text-[#1B2D4A]">
-                  Select date of birth
-                </Text>
-                <Pressable
-                  onPress={() => {
-                    if (tempDate) {
-                      setDateOfBirth(formatDate(tempDate));
-                    }
-                    setShowDatePicker(false);
-                  }}
-                >
-                  <Text className="text-[15px] font-outfit-semibold text-[#123E7C]">
-                    Done
-                  </Text>
-                </Pressable>
-              </View>
-
-              <DateTimePicker
-                value={tempDate || new Date()}
-                mode="date"
-                display={Platform.OS === "ios" ? "spinner" : "calendar"}
-                maximumDate={new Date()}
-                accentColor="#123E7C"
-                textColor="#1B2D4A"
-                themeVariant="light"
-                onChange={(_, selectedDate) => {
-                  if (selectedDate) {
-                    setTempDate(selectedDate);
-                  }
-                }}
-              />
-            </View>
-          </View>
-        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

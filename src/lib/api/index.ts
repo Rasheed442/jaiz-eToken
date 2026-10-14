@@ -8,7 +8,8 @@ export { API_CONFIG, getApiUrl, getBvnUrl } from './config';
 
 // Types
 export type {
-    ApiErrorResponse,
+    AccountVerificationData, AccountVerificationRequest,
+    AccountVerificationResponse, ApiErrorResponse,
     ApiSuccessResponse, BvnVerificationRequest,
     BvnVerificationResponse, CreateProfileRequest,
     CreateProfileResponse, CustomerType,
