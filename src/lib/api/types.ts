@@ -151,6 +151,7 @@ export interface VerifyOtpRequest {
 export interface VerifyOtpSuccessResponse {
   success: true;
   message: string;
+  data?: string;
   timestamp: string;
 }
 
@@ -172,37 +173,62 @@ export type VerifyOtpResponse =
   | VerifyOtpErrorResponse;
 
 /**
- * Liveliness Check Request
+ * Start a registration liveliness check
  */
-export interface LivelinessCheckRequest {
+export interface StartLivelinessRequest {
   accountNumber: string;
-  selfieBase64: string;
-  deviceModel: string;
-  osVersion: string;
+  registrationToken: string;
 }
 
-/**
- * Liveliness Check Response (Success)
- */
-export interface LivelinessCheckSuccessResponse {
+export interface StartLivelinessData {
+  verificationReference: string;
+  flowId: string;
+  userPhotoLink: string;
+  userPhotoHash: string;
+  metadata?: {
+    internalVerificationRef?: string;
+    userPhotoLink?: string;
+    userPhotoHash?: string;
+    [key: string]: unknown;
+  };
+  attemptsRemaining?: number;
+}
+
+export interface StartLivelinessResponse {
   success: true;
   message: string;
+  data: StartLivelinessData;
   timestamp: string;
 }
 
-/**
- * Liveliness Check Response (Error)
- */
-export interface LivelinessCheckErrorResponse {
+export interface StartLivelinessErrorResponse {
   success: false;
   message: string;
   errorCode?: string;
   timestamp: string;
 }
 
-/**
- * Security Question
- */
+export type StartLivelinessResult = StartLivelinessResponse | StartLivelinessErrorResponse;
+
+export interface ConfirmLivelinessRequest {
+  accountNumber: string;
+  registrationToken: string;
+}
+
+export interface ConfirmLivelinessResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    status?: string;
+    flowStatus?: string;
+    verificationStatus?: string;
+    [key: string]: unknown;
+  } | string;
+  errorCode?: string;
+  timestamp?: string;
+}
+
+/** Security Question */
 export interface SecurityQuestion {
   question: string;
   answer: string;
@@ -241,13 +267,6 @@ export interface CreateProfileErrorResponse {
   errorCode?: string;
   timestamp: string;
 }
-
-/**
- * Liveliness Check Response (Union)
- */
-export type LivelinessCheckResponse =
-  | LivelinessCheckSuccessResponse
-  | LivelinessCheckErrorResponse;
 
 /**
  * Create Profile Response (Union)
@@ -387,6 +406,7 @@ export interface MetaMapWebhookRequest {
     internalVerificationRef: string;
     userPhotoHash?: string;
     userPhotoLink?: string;
+    userPhotoLinkHash?: string;
   };
   step: {
     id: string;

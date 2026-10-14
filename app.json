@@ -11,6 +11,9 @@
       "icon": "./assets/expo.icon",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs camera access to verify your identity for secure transactions.",
+        "NSMicrophoneUsageDescription": "MetaMap may use the microphone during identity verification.",
+        "NSPhotoLibraryUsageDescription": "MetaMap may use your photo library when an identity verification step requires it.",
+        "NSLocationWhenInUseUsageDescription": "MetaMap may use your location during identity verification.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.rasheed44.jaiz"
@@ -50,7 +53,8 @@
       "@react-native-community/datetimepicker",
       "expo-camera",
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      "react-native-metamap-sdk/plugin/build"
     ],
     "experiments": {
       "typedRoutes": true

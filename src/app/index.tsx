@@ -26,7 +26,26 @@ import VerificationDocumentScreen from "@/screens/VerificationDocumentScreen";
 import WelcomeScreen from "@/screens/WelcomeScreen";
 import { authStorage } from "../lib/auth/storage";
 
-type Screen = "welcome" | "personal-registration" | "corporate-registration" | "verification-documents" | "submitted-for-review" | "otp" | "facial-verification" | "create-profile" | "etoken-activated" | "login" | "forgot-passcode" | "home" | "device-details" | "register-device" | "device-otp" | "device-registered" | "deregister-device" | "device-deregistered" | "animated-splash";
+type Screen =
+  | "welcome"
+  | "personal-registration"
+  | "corporate-registration"
+  | "verification-documents"
+  | "submitted-for-review"
+  | "otp"
+  | "facial-verification"
+  | "create-profile"
+  | "etoken-activated"
+  | "login"
+  | "forgot-passcode"
+  | "home"
+  | "device-details"
+  | "register-device"
+  | "device-otp"
+  | "device-registered"
+  | "deregister-device"
+  | "device-deregistered"
+  | "animated-splash";
 type TransitionDirection = "forward" | "backward";
 
 function AnimatedScreen({
@@ -62,16 +81,12 @@ export default function HomeScreen() {
     useState<TransitionDirection>("forward");
   const [username, setUsername] = useState("");
   const [customerName, setCustomerName] = useState("");
-  const [verificationData, setVerificationData] = useState<{
-    userPhotoHash: string;
-    userPhotoLink: string;
-    flowId: string;
-    internalVerificationRef: string;
-  } | undefined>();
+  const [registrationToken, setRegistrationToken] = useState<string>();
   const [accountNumber, setAccountNumber] = useState<string | undefined>();
   const [nextScreen, setNextScreen] = useState<Screen | null>(null);
   const [forgotPasscodeUsername, setForgotPasscodeUsername] = useState("");
-  const [forgotPasscodeAccountNumber, setForgotPasscodeAccountNumber] = useState("");
+  const [forgotPasscodeAccountNumber, setForgotPasscodeAccountNumber] =
+    useState("");
 
   // Check if user has already registered and determine where to go
   useEffect(() => {
@@ -94,6 +109,7 @@ export default function HomeScreen() {
       }
       // If user has remembered username but no tokens, they need to login
       else if (rememberedUsername) {
+        // setNextScreen("welcome");
         setNextScreen("login");
       }
       // Otherwise, show welcome screen (new user)
@@ -135,7 +151,7 @@ export default function HomeScreen() {
             }}
             onOtpComplete={(values) => {
               console.log("OTP complete with values:", values);
-              setVerificationData(values.verificationData);
+              setRegistrationToken(values.registrationToken);
               setAccountNumber(values.accountNumber);
               setTransitionDirection("forward");
               setScreen("facial-verification");
@@ -251,8 +267,8 @@ export default function HomeScreen() {
               setTransitionDirection("forward");
               setScreen("create-profile");
             }}
-            verificationData={verificationData}
             accountNumber={accountNumber}
+            registrationToken={registrationToken}
             step={3}
             totalSteps={5}
           />
@@ -302,6 +318,10 @@ export default function HomeScreen() {
               setTransitionDirection("forward");
               setScreen("home");
             }
+          }}
+          onGetStarted={() => {
+            setTransitionDirection("backward");
+            setScreen("welcome");
           }}
           onForgotPasscode={(username: string) => {
             setForgotPasscodeUsername(username);

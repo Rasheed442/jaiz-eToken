@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -49,17 +49,12 @@ export default function WelcomeScreen({
       <SafeAreaView className="flex-1 pt-6">
         <View className="w-full px-8 pt-16">
           <View className="flex-row items-center">
-            <View className="h-11 w-11 items-center justify-center rounded-xl border-2 border-[#F8C300] bg-white">
-              <Text className="text-lg font-bold text-[#193F7F]">J</Text>
-            </View>
-            <View className="ml-3">
-              <Text className="text-base font-bold tracking-wide text-white">
-                JAIZ
-              </Text>
-              <Text className="text-xs font-semibold tracking-wide text-[#F8C300]">
-                eTOKEN
-              </Text>
-            </View>
+            <Image
+              source={require("../../assets/images/jaizlogo2.png")}
+              accessibilityLabel="Jaiz eToken"
+              resizeMode="contain"
+              className="h-14 w-36"
+            />
           </View>
 
           <View className="pt-28">

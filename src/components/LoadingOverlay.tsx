@@ -10,7 +10,10 @@ type LoadingOverlayProps = {
 const DOT_COUNT = 3;
 const DOT_STAGGER_MS = 160;
 
-export default function LoadingOverlay({ visible, message = "Logging in..." }: LoadingOverlayProps) {
+export default function LoadingOverlay({
+  visible,
+  message = "Logging in..."
+}: LoadingOverlayProps) {
   const enter = useRef(new Animated.Value(0)).current;
   const dots = useMemo(
     () => Array.from({ length: DOT_COUNT }, () => new Animated.Value(0)),
@@ -39,8 +42,16 @@ export default function LoadingOverlay({ visible, message = "Logging in..." }: L
       Animated.loop(
         Animated.sequence([
           Animated.delay(i * DOT_STAGGER_MS),
-          Animated.timing(dot, { toValue: 1, duration: 350, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0, duration: 350, useNativeDriver: true }),
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 350,
+            useNativeDriver: true
+          }),
+          Animated.timing(dot, {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: true
+          }),
           Animated.delay((DOT_COUNT - 1 - i) * DOT_STAGGER_MS)
         ])
       )
@@ -53,8 +64,14 @@ export default function LoadingOverlay({ visible, message = "Logging in..." }: L
     };
   }, [visible, dots]);
 
-  const logoScale = enter.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
-  const textShift = enter.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
+  const logoScale = enter.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.85, 1]
+  });
+  const textShift = enter.interpolate({
+    inputRange: [0, 1],
+    outputRange: [16, 0]
+  });
 
   return (
     <Modal
@@ -79,7 +96,9 @@ export default function LoadingOverlay({ visible, message = "Logging in..." }: L
             }}
             className="h-24 w-24 items-center justify-center rounded-3xl bg-white"
           >
-            <Text className="text-[40px] font-outfit-bold text-[#193F7F]">J</Text>
+            <Text className="text-[40px] font-outfit-bold text-[#193F7F]">
+              J
+            </Text>
           </Animated.View>
 
           <Animated.View
@@ -92,27 +111,46 @@ export default function LoadingOverlay({ visible, message = "Logging in..." }: L
             </Text>
           </Animated.View>
 
-          <Animated.View style={{ opacity: enter }} className="mt-10 items-center">
-            <View className="flex-row items-center gap-2" accessibilityRole="progressbar">
+          <Animated.View
+            style={{ opacity: enter }}
+            className="mt-10 items-center"
+          >
+            <View
+              className="flex-row items-center gap-2"
+              accessibilityRole="progressbar"
+            >
               {dots.map((dot, i) => (
                 <Animated.View
                   key={i}
                   style={{
-                    opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
+                    opacity: dot.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.3, 1]
+                    }),
                     transform: [
-                      { scale: dot.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.15] }) }
+                      {
+                        scale: dot.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1.15]
+                        })
+                      }
                     ]
                   }}
                   className="h-2.5 w-2.5 rounded-full bg-[#193F7F]"
                 />
               ))}
             </View>
-            <Text className="mt-4 text-[16px] font-outfit-medium text-[#193F7F]">{message}</Text>
+            <Text className="mt-4 text-[16px] font-outfit-medium text-[#193F7F]">
+              {message}
+            </Text>
           </Animated.View>
         </View>
 
         {/* Footer: secondary reassurance, pinned to the bottom */}
-        <Animated.View style={{ opacity: enter }} className="items-center px-8 pb-6">
+        <Animated.View
+          style={{ opacity: enter }}
+          className="items-center px-8 pb-6"
+        >
           <Text className="text-[13px] font-outfit text-[#193F7F]/70">
             Securing your session
           </Text>

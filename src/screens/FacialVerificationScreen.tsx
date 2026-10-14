@@ -1,37 +1,41 @@
-import { CameraView, useCameraPermissions } from "expo-camera";
-import { ChevronLeft } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
-import Animated, {
-    FadeIn,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withSequence,
-    withTiming
-} from "react-native-reanimated";
+import { ChevronLeft, ScanFace } from "lucide-react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  NativeEventEmitter,
+  NativeModules,
+  Pressable,
+  ScrollView,
+  Text,
+  View
+} from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
+import type { StartLivelinessData } from "../lib/api/types";
 
 type FacialVerificationScreenProps = {
   onBack: () => void;
-  onVerificationComplete: (photoUri?: string) => void;
-  verificationData?: {
-    userPhotoHash: string;
-    userPhotoLink: string;
-    flowId: string;
-    internalVerificationRef: string;
-  };
+  onVerificationComplete: () => void;
   accountNumber?: string;
+  registrationToken?: string;
   step?: number;
   totalSteps?: number;
 };
 
-function ProgressBar({ step, totalSteps }: { step: number; totalSteps: number }) {
+function ProgressBar({
+  step,
+  totalSteps
+}: {
+  step: number;
+  totalSteps: number;
+}) {
   const progress = Math.min(1, Math.max(0, step / totalSteps));
   return (
     <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5]">
-      <View className="h-full rounded-full bg-[#123E7C]" style={{ width: `${progress * 100}%` }} />
+      <View
+        className="h-full rounded-full bg-[#123E7C]"
+        style={{ width: `${progress * 100}%` }}
+      />
     </View>
   );
 }
@@ -49,150 +53,207 @@ function BackButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+const CONFIRM_INTERVAL_MS = 5000;
+const MAX_CONFIRM_ATTEMPTS = 60;
+
 export default function FacialVerificationScreen({
   onBack,
   onVerificationComplete,
-  verificationData,
   accountNumber,
+  registrationToken,
   step = 3,
   totalSteps = 5
 }: FacialVerificationScreenProps) {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanningProgress, setScanningProgress] = useState(0);
-  const [isScanning, setIsScanning] = useState(false);
-  const [capturedUri, setCapturedUri] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isFlowOpen, setIsFlowOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
+  const [liveliness, setLiveliness] = useState<StartLivelinessData | null>(
+    null
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const cameraRef = useRef<CameraView>(null);
-  const scanLineY = useSharedValue(0);
+  const isConfirmingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const completedRef = useRef(false);
 
   useEffect(() => {
-    if (isScanning) {
-      scanLineY.value = withRepeat(
-        withSequence(withTiming(1, { duration: 2000 }), withTiming(0, { duration: 2000 })),
-        -1,
-        false
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const confirmWithBackend = useCallback(async () => {
+    if (isConfirmingRef.current || completedRef.current) return;
+    if (!accountNumber || !registrationToken) {
+      setErrorMessage(
+        "Registration details are missing. Go back and try again."
       );
-
-      const interval = setInterval(() => {
-        setScanningProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setIsScanning(false);
-            finishScan();
-            return 100;
-          }
-          return prev + 2;
-        });
-      }, 100);
-
-      return () => clearInterval(interval);
+      return;
     }
-  }, [isScanning]);
 
-  const scanLineStyle = useAnimatedStyle(() => ({
-    top: `${scanLineY.value * 100}%`
-  }));
+    isConfirmingRef.current = true;
+    setIsConfirming(true);
+    setErrorMessage(null);
 
-  const finishScan = async () => {
-    // Capture a still frame to send to your verification backend
     try {
-      setIsProcessing(true);
-      setErrorMessage(null);
-      const photo = await cameraRef.current?.takePictureAsync({
-        quality: 0.7,
-        base64: true,
-      });
+      for (let attempt = 1; attempt <= MAX_CONFIRM_ATTEMPTS; attempt += 1) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, CONFIRM_INTERVAL_MS)
+        );
+        if (!isMountedRef.current) return;
 
-      if (photo?.uri) {
-        setCapturedUri(photo.uri);
+        try {
+          const response = await registrationApi.confirmLiveliness({
+            accountNumber,
+            registrationToken
+          });
 
-        // Step 1: Call MetaMap webhook with verification data
-        if (verificationData) {
-          console.log("📡 Calling MetaMap webhook with data:", verificationData);
-          try {
-            const webhookPayload = {
-              eventName: "verification_completed",
-              flowId: verificationData.flowId,
-              identityStatus: "verified",
-              resource: "", // Resource URL would come from MetaMap
-              metadata: {
-                internalVerificationRef: verificationData.internalVerificationRef,
-                userPhotoHash: verificationData.userPhotoHash,
-                userPhotoLink: verificationData.userPhotoLink,
-              },
-              step: {
-                id: "step_facial_recognition",
-                status: "completed",
-              },
-            };
-            console.log("📤 MetaMap webhook payload:", webhookPayload);
-            await registrationApi.metaMapWebhook(webhookPayload);
-            console.log("✅ MetaMap webhook succeeded");
-          } catch (webhookError: any) {
-            console.error("❌ MetaMap webhook failed:", webhookError);
-            // Continue with liveness check even if webhook fails
-          }
-        } else {
-          console.warn("⚠️ No verificationData available, skipping MetaMap webhook");
-        }
-
-        // Step 2: Call liveness check endpoint
-        if (photo.base64 && accountNumber) {
-          try {
-            const deviceInfo = {
-              deviceModel: Platform.OS === 'ios' ? 'iPhone' : 'Android',
-              osVersion: Platform.Version as string,
-            };
-
-            const livenessPayload = {
-              accountNumber: accountNumber,
-              selfieBase64: photo.base64,
-              deviceModel: deviceInfo.deviceModel,
-              osVersion: deviceInfo.osVersion,
-            };
-            console.log("📤 Liveness check payload:", {
-              ...livenessPayload,
-              selfieBase64: livenessPayload.selfieBase64.substring(0, 50) + "..." // Log truncated base64
-            });
-            await registrationApi.performLivelinessCheck(livenessPayload);
-            console.log("✅ Liveness check succeeded");
-          } catch (livenessError: any) {
-            console.error("❌ Liveness check failed:", livenessError);
-            // Show error to user and don't continue
-            setErrorMessage(livenessError?.message || "Liveness check failed. Please try again.");
-            setScanningProgress(0);
-            setIsProcessing(false);
+          if (response.success) {
+            completedRef.current = true;
+            onVerificationComplete();
             return;
           }
-        } else {
-          console.warn("⚠️ Missing photo.base64 or accountNumber for liveness check");
-        }
 
-        // Success - navigate to next section
-        onVerificationComplete(photo.uri);
-      } else {
-        setErrorMessage("Failed to capture photo. Please try again.");
-        setScanningProgress(0);
+          if (isMountedRef.current) {
+            setErrorMessage(
+              response.message || "Verification is still processing."
+            );
+          }
+        } catch (error) {
+          if (isMountedRef.current) {
+            setErrorMessage(
+              error instanceof Error
+                ? error.message
+                : "Verification is still processing."
+            );
+          }
+        }
       }
-    } catch (err) {
-      console.warn("Failed to capture verification photo", err);
-      setErrorMessage("Failed to capture photo. Please try again.");
-      setScanningProgress(0);
+
+      if (isMountedRef.current) {
+        setErrorMessage(
+          "Verification is taking longer than expected. Try checking again."
+        );
+      }
     } finally {
-      setIsProcessing(false);
+      isConfirmingRef.current = false;
+      if (isMountedRef.current) setIsConfirming(false);
     }
-  };
+  }, [accountNumber, onVerificationComplete, registrationToken]);
+
+  useEffect(() => {
+    const metaMapModule = NativeModules.MetaMapRNSdk;
+    if (!metaMapModule) return;
+
+    const emitter = new NativeEventEmitter(metaMapModule);
+    const successSubscription = emitter.addListener(
+      "verificationSuccess",
+      () => {
+        setIsFlowOpen(false);
+        setIsAwaitingConfirmation(true);
+        void confirmWithBackend();
+      }
+    );
+
+    const canceledSubscription = emitter.addListener(
+      "verificationCanceled",
+      () => {
+        setIsFlowOpen(false);
+        setIsAwaitingConfirmation(false);
+        setErrorMessage(
+          "Verification was canceled. You can start it again when ready."
+        );
+      }
+    );
+
+    return () => {
+      successSubscription.remove();
+      canceledSubscription.remove();
+    };
+  }, [confirmWithBackend]);
 
   const handleStartVerification = async () => {
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) return;
+    if (isStarting || isFlowOpen || isConfirming) return;
+    if (!accountNumber || !registrationToken) {
+      setErrorMessage(
+        "Registration details are missing. Go back and try again."
+      );
+      return;
     }
-    setIsScanning(true);
+
+    const clientId = "6ace8e945c0f9012f1d318e8";
+    if (!clientId) {
+      setErrorMessage(
+        "MetaMap is not configured. Add EXPO_PUBLIC_METAMAP_CLIENT_ID to the build environment."
+      );
+      return;
+    }
+
+    const metaMapModule = NativeModules.MetaMapRNSdk;
+    if (!metaMapModule?.showFlow) {
+      setErrorMessage(
+        "MetaMap is unavailable in this app build. Create a new native development or preview build."
+      );
+      return;
+    }
+
+    setIsStarting(true);
+    setErrorMessage(null);
+    setIsAwaitingConfirmation(false);
+    completedRef.current = false;
+
+    try {
+      const response = await registrationApi.startLiveliness({
+        accountNumber,
+        registrationToken
+      });
+
+      if (!response.success) {
+        throw new Error(
+          response.message || "Could not start liveliness verification."
+        );
+      }
+
+      const verificationData = response.data;
+      const internalVerificationRef =
+        verificationData.metadata?.internalVerificationRef ||
+        verificationData.verificationReference;
+      if (
+        !verificationData.flowId ||
+        !verificationData.userPhotoLink ||
+        !verificationData.userPhotoHash ||
+        !internalVerificationRef
+      ) {
+        throw new Error(
+          "The liveliness start response is missing MetaMap verification details."
+        );
+      }
+
+      setLiveliness(verificationData);
+      setIsFlowOpen(true);
+      metaMapModule.showFlow(clientId, verificationData.flowId, {
+        internalVerificationRef,
+        userPhotoLink: verificationData.userPhotoLink,
+        userPhotoLinkHash: verificationData.userPhotoHash
+      });
+    } catch (error) {
+      setIsFlowOpen(false);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not start MetaMap verification."
+      );
+    } finally {
+      setIsStarting(false);
+    }
   };
 
-  const cameraDenied = permission && !permission.granted;
+  const handleRetryConfirmation = () => {
+    if (liveliness) void confirmWithBackend();
+  };
+
+  const busy = isStarting || isFlowOpen || isConfirming;
 
   return (
     <SafeAreaView className="flex-1 bg-[#F3F5F7]">
@@ -209,92 +270,72 @@ export default function FacialVerificationScreen({
             Verify it's you
           </Text>
           <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
-            Position your face within the frame and hold still.
+            Follow the secure MetaMap steps to verify your face against your BVN
+            profile photo.
           </Text>
 
-          <View className="mt-8 items-center justify-center">
-            <View className="relative h-[280px] w-[280px] items-center justify-center overflow-hidden rounded-3xl border-dashed border-4 border-[#00C853] bg-[#E8F5E9]">
-              {permission?.granted ? (
-                <CameraView
-                  ref={cameraRef}
-                  style={{ width: "100%", height: "100%", borderRadius: 20}}
-                  facing="front"
-                />
-              ) : (
-                <View className="items-center justify-center opacity-30">
-                  <View className="h-20 w-20 rounded-full bg-[#1B2D4A]" />
-                  <View className="mt-2 h-16 w-24 rounded-full bg-[#1B2D4A]" />
-                </View>
-              )}
-
-              {isScanning && (
-                <Animated.View
-                  style={[
-                    {
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      height: 2,
-                      backgroundColor: "#00C853",
-                      shadowColor: "#00C853",
-                      shadowOffset: { width: 0, height: 0 },
-                      shadowOpacity: 0.8,
-                      shadowRadius: 8
-                    },
-                    scanLineStyle
-                  ]}
-                />
-              )}
+          <View className="mt-10 items-center">
+            <View className="h-[240px] w-[240px] items-center justify-center rounded-full border-4 border-dashed border-[#123E7C] bg-[#E8F0FA]">
+              <ScanFace size={112} color="#123E7C" strokeWidth={1.4} />
             </View>
-
-            {isScanning && (
-              <View className="mt-6">
-                <Text className="text-center text-[18px] font-outfit-semibold text-[#00C853]">
-                  Scanning... {scanningProgress}%
-                </Text>
-              </View>
-            )}
-
-            {!isScanning && cameraDenied && (
-              <View className="mt-6">
-                <Text className="text-center text-[15px] font-outfit text-[#D32F2F]">
-                  Camera access was denied. Enable it in your device settings to continue.
-                </Text>
-              </View>
-            )}
-
-            {!isScanning && !cameraDenied && (
-              <View className="mt-6">
-                <Text className="text-center text-[15px] font-outfit text-[#67787F]">
-                  Make sure you're in a well-lit area and your full face is visible.
-                </Text>
-              </View>
-            )}
-
-            {errorMessage && (
-              <View className="mt-6">
-                <Text className="text-center text-[15px] font-outfit text-rose-500">
-                  {errorMessage}
-                </Text>
-              </View>
-            )}
+            <Text className="mt-6 text-center text-[15px] font-outfit text-[#67787F]">
+              Use a well-lit area and keep your face visible throughout the
+              check.
+            </Text>
           </View>
 
-          <View className="mt-12">
-            <Pressable
-              accessibilityRole="button"
-              className={[
-                "flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-4 active:opacity-80",
-                (isScanning || isProcessing) ? "opacity-60" : ""
-              ].join(" ")}
-              onPress={handleStartVerification}
-              disabled={isScanning || isProcessing}
-            >
-              <Text className="text-[18px] font-outfit-semibold text-white">
-                {isScanning ? "Scanning..." : isProcessing ? "Processing..." : "Start Verification"}
+          {errorMessage && (
+            <View className="mt-6 rounded-xl bg-[#FDECEC] px-4 py-3">
+              <Text
+                accessibilityRole="alert"
+                className="text-center text-[14px] font-outfit text-[#B42318]"
+              >
+                {errorMessage}
               </Text>
-              {!isScanning && !isProcessing && <Text className="ml-2 text-[22px] font-light text-white">›</Text>}
-            </Pressable>
+            </View>
+          )}
+
+          <View className="mt-10">
+            {liveliness &&
+            isAwaitingConfirmation &&
+            !isFlowOpen &&
+            !isConfirming &&
+            !completedRef.current ? (
+              <Pressable
+                accessibilityRole="button"
+                className="items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-4 active:opacity-80"
+                onPress={handleRetryConfirmation}
+              >
+                <Text className="text-[18px] font-outfit-semibold text-white">
+                  Check verification again
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                className={[
+                  "flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-4 active:opacity-80",
+                  busy ? "opacity-60" : ""
+                ].join(" ")}
+                onPress={handleStartVerification}
+                disabled={busy}
+              >
+                <Text className="text-[18px] font-outfit-semibold text-white">
+                  {isStarting
+                    ? "Starting verification..."
+                    : isConfirming
+                      ? "Confirming with Jaiz..."
+                      : isFlowOpen
+                        ? "Verification in progress..."
+                        : "Start Verification"}
+                </Text>
+                {!busy && (
+                  <Text className="ml-2 text-[22px] font-light text-white">
+                    ›
+                  </Text>
+                )}
+              </Pressable>
+            )}
           </View>
         </Animated.View>
       </ScrollView>

@@ -18,8 +18,8 @@ import type {
     GenerateTokenResponse,
     InitiateRegistrationRequest,
     InitiateRegistrationResponse,
-    LivelinessCheckRequest,
-    LivelinessCheckResponse,
+    ConfirmLivelinessRequest,
+    ConfirmLivelinessResponse,
     LoginRequest,
     LoginResponse,
     LogoutRequest,
@@ -34,6 +34,8 @@ import type {
     SendOtpResponse,
     StartVerificationRequest,
     StartVerificationResponse,
+    StartLivelinessRequest,
+    StartLivelinessResult,
     VerificationStatusResponse,
     VerifyOtpRequest,
     VerifyOtpResponse,
@@ -97,17 +99,18 @@ export const registrationApi = {
     );
   },
 
-  /**
-   * Perform Liveliness Check
-   * POST api/v1/register/liveliness
-   */
-  async performLivelinessCheck(
-    data: LivelinessCheckRequest
-  ): Promise<LivelinessCheckResponse> {
-    return apiClient.post<LivelinessCheckResponse>(
-      'register/liveliness',
-      data
-    );
+  /** Start registration liveliness before launching the MetaMap flow. */
+  async startLiveliness(
+    data: StartLivelinessRequest
+  ): Promise<StartLivelinessResult> {
+    return apiClient.post<StartLivelinessResult>('register/liveliness/start', data);
+  },
+
+  /** Confirm registration liveliness after MetaMap completes. */
+  async confirmLiveliness(
+    data: ConfirmLivelinessRequest
+  ): Promise<ConfirmLivelinessResponse> {
+    return apiClient.post<ConfirmLivelinessResponse>('register/liveliness/confirm', data);
   },
 
   /**

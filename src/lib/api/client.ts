@@ -10,6 +10,7 @@ export interface ApiError {
   message: string;
   errorCode?: string;
   status?: number;
+  data?: unknown;
 }
 
 let isRefreshing = false;
@@ -199,7 +200,7 @@ class ApiClient {
     console.log("🌐 API Request:", {
       method: options.method,
       url,
-      body: options.body,
+      body: endpoint.includes('webhooks/metamap') ? '[REDACTED]' : options.body,
     });
 
     try {
@@ -219,7 +220,10 @@ class ApiClient {
       clearTimeout(timeoutId);
 
       // Handle 401 Unauthorized - try to refresh token
-      if (response.status === 401) {
+      // A failed login is expected to return its own authentication error.
+      // Don't treat it as an expired authenticated session or replace the
+      // backend response with the session-refresh message.
+      if (response.status === 401 && endpoint !== 'auth/login') {
         console.log("🔄 Token expired, attempting refresh...");
 
         if (isRefreshing) {

@@ -9,9 +9,7 @@ import {
   TextInput,
   View
 } from "react-native";
-import Animated, {
-  SlideInLeft
-} from "react-native-reanimated";
+import Animated, { SlideInLeft } from "react-native-reanimated";
 
 type OtpVerificationScreenProps = {
   onBack: () => void;
@@ -66,7 +64,7 @@ function OtpInput({
             ].join(" ")}
           >
             <Text className="text-[32px] font-outfit-bold text-[#1B2D4A]">
-              {digit}
+              {digit ? "*" : ""}
             </Text>
           </View>
         );
@@ -152,7 +150,7 @@ export default function OtpVerificationScreen({
             </Text>
           </Pressable>
 
-          <View className="mt-14">
+          <View className="mt-5">
             <Pressable
               accessibilityRole="button"
               className={[
@@ -167,11 +165,9 @@ export default function OtpVerificationScreen({
               }}
             >
               <Text className="text-[22px] font-outfit-semibold text-white">
-                Verify
+                Verif
               </Text>
-              <Text className="ml-2 text-[28px] font-light text-white">
-                ›
-              </Text>
+              <Text className="ml-2 text-[28px] font-light text-white">›</Text>
             </Pressable>
           </View>
         </Animated.View>

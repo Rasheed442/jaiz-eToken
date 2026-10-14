@@ -3,15 +3,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Delete } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Animated,
-    Easing,
-    Modal,
-    Platform,
-    Pressable,
-    Text,
-    TextInput,
-    View
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Modal,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
@@ -21,10 +21,44 @@ type LoginScreenProps = {
   username: string;
   onUsernameChange?: (value: string) => void;
   onLogin: () => void;
+  onGetStarted: () => void;
   onForgotPasscode: (username: string) => void;
 };
 
 const PASSCODE_LENGTH = 6;
+
+function getLoginFailureMessage(value: unknown): string {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (!value || typeof value !== "object") return "Login failed. Please try again.";
+
+  const response = value as Record<string, unknown>;
+  const message = [
+    response.message,
+    response.errorMessage,
+    response.description,
+    response.errorDescription
+  ].find((item): item is string => typeof item === "string" && item.trim().length > 0);
+  if (message) return message.trim();
+
+  if (response.data !== undefined && response.data !== value) {
+    const nestedMessage = getLoginFailureMessage(response.data);
+    if (nestedMessage !== "Login failed. Please try again.") return nestedMessage;
+  }
+
+  const errorCode = [response.errorCode, response.code].find(
+    (item): item is string => typeof item === "string" && item.trim().length > 0
+  );
+  if (errorCode) return errorCode.trim();
+
+  try {
+    const rawResponse = JSON.stringify(value, null, 2);
+    return rawResponse && rawResponse !== "{}"
+      ? rawResponse
+      : "Login failed. Please try again.";
+  } catch {
+    return "Login failed. Please try again.";
+  }
+}
 
 function PasscodeDots({ length, filled }: { length: number; filled: number }) {
   return (
@@ -77,7 +111,13 @@ function KeypadButton({
 
 /* ---------- Full-screen loading overlay ---------- */
 
-function LoadingOverlay({ visible, message }: { visible: boolean; message: string }) {
+function LoadingOverlay({
+  visible,
+  message
+}: {
+  visible: boolean;
+  message: string;
+}) {
   const enter = useRef(new Animated.Value(0)).current;
   const dots = useMemo(() => [0, 1, 2].map(() => new Animated.Value(0)), []);
 
@@ -100,8 +140,16 @@ function LoadingOverlay({ visible, message }: { visible: boolean; message: strin
       Animated.loop(
         Animated.sequence([
           Animated.delay(i * 160),
-          Animated.timing(dot, { toValue: 1, duration: 350, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0, duration: 350, useNativeDriver: true }),
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 350,
+            useNativeDriver: true
+          }),
+          Animated.timing(dot, {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: true
+          }),
           Animated.delay((2 - i) * 160)
         ])
       )
@@ -127,7 +175,12 @@ function LoadingOverlay({ visible, message }: { visible: boolean; message: strin
             style={{
               opacity: enter,
               transform: [
-                { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }
+                {
+                  scale: enter.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.85, 1]
+                  })
+                }
               ],
               shadowColor: "#193F7F",
               shadowOpacity: 0.18,
@@ -137,14 +190,21 @@ function LoadingOverlay({ visible, message }: { visible: boolean; message: strin
             }}
             className="h-24 w-24 items-center justify-center rounded-3xl bg-white"
           >
-            <Text className="text-[40px] font-outfit-bold text-[#193F7F]">J</Text>
+            <Text className="text-[40px] font-outfit-bold text-[#193F7F]">
+              J
+            </Text>
           </Animated.View>
 
           <Animated.View
             style={{
               opacity: enter,
               transform: [
-                { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }
+                {
+                  translateY: enter.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [16, 0]
+                  })
+                }
               ]
             }}
             className="mt-6 items-center"
@@ -155,27 +215,45 @@ function LoadingOverlay({ visible, message }: { visible: boolean; message: strin
             </Text>
           </Animated.View>
 
-          <Animated.View style={{ opacity: enter }} className="mt-10 items-center">
+          <Animated.View
+            style={{ opacity: enter }}
+            className="mt-10 items-center"
+          >
             <View className="flex-row items-center gap-2">
               {dots.map((dot, i) => (
                 <Animated.View
                   key={i}
                   style={{
-                    opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
+                    opacity: dot.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.3, 1]
+                    }),
                     transform: [
-                      { scale: dot.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.15] }) }
+                      {
+                        scale: dot.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1.15]
+                        })
+                      }
                     ]
                   }}
                   className="h-2.5 w-2.5 rounded-full bg-[#193F7F]"
                 />
               ))}
             </View>
-            <Text className="mt-4 text-[16px] font-outfit-medium text-[#193F7F]">{message}</Text>
+            <Text className="mt-4 text-[16px] font-outfit-medium text-[#193F7F]">
+              {message}
+            </Text>
           </Animated.View>
         </View>
 
-        <Animated.View style={{ opacity: enter }} className="items-center px-8 pb-6">
-          <Text className="text-[13px] font-outfit text-[#193F7F]/70">Securing your session</Text>
+        <Animated.View
+          style={{ opacity: enter }}
+          className="items-center px-8 pb-6"
+        >
+          <Text className="text-[13px] font-outfit text-[#193F7F]/70">
+            Securing your session
+          </Text>
         </Animated.View>
       </SafeAreaView>
     </Modal>
@@ -188,12 +266,25 @@ export default function LoginScreen({
   username,
   onUsernameChange,
   onLogin,
+  onGetStarted,
   onForgotPasscode
 }: LoginScreenProps) {
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
+  const [Checkusername, seChecktUsername] = useState("");
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const rememberedUsername = await authStorage.getUsername();
+
+      if (rememberedUsername) {
+        seChecktUsername(rememberedUsername);
+      }
+    };
+    checkAuthStatus();
+  }, []);
 
   const initial = username?.trim().charAt(0).toUpperCase() || "?";
 
@@ -254,7 +345,7 @@ export default function LoginScreen({
           customerName: response.data.customerName,
           accountNumber: response.data.accountNumber,
           passcode: passcodeToSubmit,
-          deviceId,
+          deviceId
         });
 
         // Remember username
@@ -266,13 +357,13 @@ export default function LoginScreen({
         onLogin();
       } else {
         setShowLoader(false);
-        setError(response.message || "Login failed");
+        setError(getLoginFailureMessage(response));
         setPasscode("");
       }
     } catch (err: any) {
       console.error("Login failed:", err?.message ?? err);
       setShowLoader(false);
-      setError(err?.message || "Login failed. Please try again.");
+      setError(getLoginFailureMessage(err?.data ?? err));
       setPasscode("");
     } finally {
       setIsLoading(false);
@@ -315,21 +406,29 @@ export default function LoginScreen({
       </LinearGradient>
 
       <View className="flex-1 px-6 pt-6">
-        <Text className="text-[14px] font-outfit-medium text-[#1B2D4A]">
-          Username / CIF
-        </Text>
-        <TextInput
-          value={username}
-          onChangeText={onUsernameChange}
-          editable={!!onUsernameChange}
-          placeholder="ihsaan"
-          placeholderTextColor="#9AA5B1"
-          autoCapitalize="none"
-          autoCorrect={false}
-          className={`mt-2 rounded-2xl bg-[#F0F1F2] px-4 py-4 text-[16px] font-outfit text-[#1B2D4A] ${
-            !onUsernameChange ? "opacity-70" : ""
-          }`}
-        />
+        {Checkusername ? (
+          ""
+        ) : (
+          <Text className="text-[14px] font-outfit-medium text-[#1B2D4A]">
+            Username / CIF
+          </Text>
+        )}
+        {Checkusername ? (
+          ""
+        ) : (
+          <TextInput
+            value={username}
+            onChangeText={onUsernameChange}
+            editable={!!onUsernameChange}
+            placeholder="ihsaan"
+            placeholderTextColor="#9AA5B1"
+            autoCapitalize="none"
+            autoCorrect={false}
+            className={`mt-2 rounded-2xl bg-[#F0F1F2] px-4 py-4 text-[16px] font-outfit text-[#1B2D4A] ${
+              !onUsernameChange ? "opacity-70" : ""
+            }`}
+          />
+        )}
 
         <PasscodeDots length={PASSCODE_LENGTH} filled={passcode.length} />
 
@@ -374,6 +473,16 @@ export default function LoginScreen({
         >
           <Text className="text-[15px] font-outfit-semibold text-[#123E7C]">
             Forgot passcode?
+          </Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={onGetStarted}
+          className="mt-2 items-center rounded-2xl border border-[#123E7C] py-4 active:opacity-70"
+        >
+          <Text className="text-[15px] font-outfit-semibold text-[#123E7C]">
+            Get started
           </Text>
         </Pressable>
       </View>

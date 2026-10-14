@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Calendar, ChevronLeft, Hash, Mail, Phone, User } from "lucide-react-native";
+import { Calendar, ChevronLeft, Hash, User } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,9 +12,7 @@ import {
   TextInput,
   View
 } from "react-native";
-import Animated, {
-  SlideInLeft
-} from "react-native-reanimated";
+import Animated, { SlideInLeft } from "react-native-reanimated";
 import { registrationApi } from "../lib/api";
 
 type PersonalRegistrationScreenProps = {
@@ -22,7 +20,7 @@ type PersonalRegistrationScreenProps = {
   onContinue: (values: {
     accountNumber: string;
     bvn: string;
-    customerType: 'PERSONAL';
+    customerType: "PERSONAL";
     phoneNumber: string;
     email: string;
     firstName: string;
@@ -35,7 +33,7 @@ type PersonalRegistrationScreenProps = {
   onOtpComplete?: (values: {
     accountNumber: string;
     bvn: string;
-    customerType: 'PERSONAL';
+    customerType: "PERSONAL";
     phoneNumber: string;
     email: string;
     firstName: string;
@@ -45,12 +43,7 @@ type PersonalRegistrationScreenProps = {
     domiciledBranch: string;
     dateOfBirth: string;
     otpVerified: boolean;
-    verificationData?: {
-      userPhotoHash: string;
-      userPhotoLink: string;
-      flowId: string;
-      internalVerificationRef: string;
-    };
+    registrationToken: string;
   }) => void;
   step?: number;
   totalSteps?: number;
@@ -64,7 +57,8 @@ type FieldProps = {
   icon: React.ReactNode;
   helperText?: string;
   helperTextColor?: string;
-  keyboardType?: "default" | "numeric" | "number-pad" | "phone-pad" | "email-address";
+  keyboardType?:
+    "default" | "numeric" | "number-pad" | "phone-pad" | "email-address";
   maxLength?: number;
   editable?: boolean;
   onFocus?: () => void;
@@ -74,6 +68,32 @@ type FieldProps = {
 
 const OTP_LENGTH = 6;
 const BVN_LENGTH = 11;
+
+function maskPhoneNumber(value: string) {
+  const characters = [...value];
+  const digitIndexes = characters.reduce<number[]>((indexes, character, index) => {
+    if (/\d/.test(character)) indexes.push(index);
+    return indexes;
+  }, []);
+
+  digitIndexes.slice(-3).forEach((index) => {
+    characters[index] = "*";
+  });
+
+  return characters.join("");
+}
+
+function maskEmail(value: string) {
+  const separatorIndex = value.lastIndexOf("@");
+  if (separatorIndex <= 0) return value;
+
+  const localPart = value.slice(0, separatorIndex);
+  const domain = value.slice(separatorIndex);
+  if (localPart.length === 1) return `*${domain}`;
+  if (localPart.length === 2) return `${localPart[0]}*${domain}`;
+
+  return `${localPart[0]}${"*".repeat(localPart.length - 2)}${localPart[localPart.length - 1]}${domain}`;
+}
 
 function Toast({
   message,
@@ -268,6 +288,7 @@ export default function PersonalRegistrationScreen({
   const [domiciledBranch, setDomiciledBranch] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [showError, setShowError] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date | null>(null);
   const [showOtp, setShowOtp] = useState(false);
@@ -279,7 +300,10 @@ export default function PersonalRegistrationScreen({
   const [bvnVerified, setBvnVerified] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "error" | "success" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success";
+  } | null>(null);
 
   // Auto-dismiss toast after 5 seconds
   useEffect(() => {
@@ -368,17 +392,27 @@ export default function PersonalRegistrationScreen({
           if (response.data.lastName) setLastName(response.data.lastName);
           if (response.data.middleName) setMiddleName(response.data.middleName);
           if (response.data.email) setEmail(response.data.email.toLowerCase());
-          if (response.data.phoneNumber) setPhoneNumber(response.data.phoneNumber);
+          if (response.data.phoneNumber)
+            setPhoneNumber(response.data.phoneNumber);
           if (response.data.dateOfBirth) {
             // Convert date format from "14-Jun-2002" to "DD / MM / YYYY"
             const dob = response.data.dateOfBirth;
-            const parts = dob.split('-');
+            const parts = dob.split("-");
             if (parts.length === 3) {
-              const day = parts[0].padStart(2, '0');
+              const day = parts[0].padStart(2, "0");
               const monthMap: Record<string, string> = {
-                'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-                'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-                'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+                Jan: "01",
+                Feb: "02",
+                Mar: "03",
+                Apr: "04",
+                May: "05",
+                Jun: "06",
+                Jul: "07",
+                Aug: "08",
+                Sep: "09",
+                Oct: "10",
+                Nov: "11",
+                Dec: "12"
               };
               const month = monthMap[parts[1]] || parts[1];
               const year = parts[2];
@@ -386,8 +420,10 @@ export default function PersonalRegistrationScreen({
             }
           }
           if (response.data.branchCode) setBranchCode(response.data.branchCode);
-          if (response.data.domiciledBranch) setDomiciledBranch(response.data.domiciledBranch);
-          if (response.data.accountNumber) setAccountNumber(response.data.accountNumber);
+          if (response.data.domiciledBranch)
+            setDomiciledBranch(response.data.domiciledBranch);
+          if (response.data.accountNumber)
+            setAccountNumber(response.data.accountNumber);
         } else {
           // Handle failed BVN verification (success: false)
           setBvnError(response.message || "BVN verification failed");
@@ -396,7 +432,8 @@ export default function PersonalRegistrationScreen({
       .catch((error: any) => {
         if (cancelled) return;
         // Show the actual error message from the API response
-        const errorMessage = error?.message || "Failed to verify BVN. Please try again.";
+        const errorMessage =
+          error?.message || "Failed to verify BVN. Please try again.";
         setBvnError(errorMessage);
         setBvnVerified(false);
       })
@@ -418,8 +455,6 @@ export default function PersonalRegistrationScreen({
 
     const accountValue = accountNumber.trim();
     const bvnValue = bvn.trim();
-    const phoneNumberValue = phoneNumber.trim();
-    const emailValue = email.trim().toLowerCase();
     const firstNameValue = firstName.trim();
     const lastNameValue = lastName.trim();
     const middleNameValue = middleName.trim();
@@ -428,14 +463,9 @@ export default function PersonalRegistrationScreen({
     const dobValue = dateOfBirth.trim();
 
     const isValid =
-      accountValue.length >= 10 &&
-      bvnValue.length >= BVN_LENGTH &&
-      phoneNumberValue.length > 0 &&
-      emailValue.length > 0 &&
-      firstNameValue.length > 0 &&
+      accountValue.length === 10 &&
+      bvnValue.length === BVN_LENGTH &&
       lastNameValue.length > 0 &&
-      branchCodeValue.length > 0 &&
-      domiciledBranchValue.length > 0 &&
       dobValue.length > 0 &&
       bvnVerified;
 
@@ -451,6 +481,20 @@ export default function PersonalRegistrationScreen({
     }
 
     setShowError(false);
+    setCurrentStep(step + 1);
+    setShowDetails(true);
+  };
+
+  const handleSubmitDetails = async () => {
+    if (isSubmitting) return;
+    const accountValue = accountNumber.trim();
+    const bvnValue = bvn.trim();
+    const firstNameValue = firstName.trim();
+    const lastNameValue = lastName.trim();
+    const middleNameValue = middleName.trim();
+    const branchCodeValue = branchCode.trim();
+    const domiciledBranchValue = domiciledBranch.trim();
+    const dobValue = dateOfBirth.trim();
     setIsSubmitting(true);
 
     try {
@@ -458,14 +502,14 @@ export default function PersonalRegistrationScreen({
         accountNumber: accountValue,
         bvn: bvnValue,
         customerType: "PERSONAL" as const,
-        phoneNumber: phoneNumberValue,
-        email: emailValue,
+        phoneNumber: phoneNumber.trim(),
+        email: email.trim().toLowerCase(),
         firstName: firstNameValue,
         lastName: lastNameValue,
         middleName: middleNameValue,
         branchCode: branchCodeValue,
         domiciledBranch: domiciledBranchValue,
-        dateOfBirth: formatDateForApi(dobValue),
+        dateOfBirth: formatDateForApi(dobValue)
       };
       console.log("Sending registration payload:", payload);
       const response = await registrationApi.initiateRegistration(payload);
@@ -476,7 +520,7 @@ export default function PersonalRegistrationScreen({
         try {
           const otpResponse = await registrationApi.sendOtp({
             accountNumber: accountValue,
-            tokenType: "REGISTRATION_OTP",
+            tokenType: "REGISTRATION_OTP"
           });
           console.log("OTP sent:", otpResponse);
           otpSent = true;
@@ -484,28 +528,35 @@ export default function PersonalRegistrationScreen({
           console.error("Failed to send OTP:", otpError);
           // Continue to OTP screen even if OTP send fails
           setToast({
-            message: otpError?.message || "Failed to send OTP. Please try resending.",
+            message:
+              otpError?.message || "Failed to send OTP. Please try resending.",
             type: "error"
           });
         }
 
-        setCurrentStep(step + 1);
+        setCurrentStep(step + 2);
         setShowOtp(true);
         if (otpSent) {
           setResendSeconds(300); // 5 minutes
         }
       } else {
         // Handle validation errors from API
-        let errorMessages = response.message || "Registration failed. Please check your inputs.";
+        let errorMessages =
+          response.message || "Registration failed. Please check your inputs.";
 
         // If there are field-specific validation errors, extract and display them
-        if (response.data && typeof response.data === 'object' && !('referenceId' in response.data)) {
+        if (
+          response.data &&
+          typeof response.data === "object" &&
+          !("referenceId" in response.data)
+        ) {
           const fieldErrors = Object.entries(response.data)
             .map(([field, message]) => {
-              const msg = typeof message === 'string' ? message : JSON.stringify(message);
+              const msg =
+                typeof message === "string" ? message : JSON.stringify(message);
               return msg;
             })
-            .join('\n');
+            .join("\n");
           if (fieldErrors) {
             errorMessages = fieldErrors;
           }
@@ -516,16 +567,18 @@ export default function PersonalRegistrationScreen({
       }
     } catch (error: any) {
       // Handle API errors
-      let errorMessage = error?.message || "Registration failed. Please try again.";
+      let errorMessage =
+        error?.message || "Registration failed. Please try again.";
 
       // If there are field-specific validation errors in the error data
-      if (error?.data && typeof error.data === 'object') {
+      if (error?.data && typeof error.data === "object") {
         const fieldErrors = Object.entries(error.data)
           .map(([field, message]) => {
-            const msg = typeof message === 'string' ? message : JSON.stringify(message);
+            const msg =
+              typeof message === "string" ? message : JSON.stringify(message);
             return msg;
           })
-          .join('\n');
+          .join("\n");
         if (fieldErrors) {
           errorMessage = fieldErrors;
         }
@@ -546,40 +599,16 @@ export default function PersonalRegistrationScreen({
     try {
       const response = await registrationApi.verifyOtp({
         accountNumber: accountNumber.trim(),
-        otp: otpCode,
+        otp: otpCode
       });
 
       if (response.success) {
-        // Call verification endpoint after successful OTP verification
-        let verificationData: {
-          userPhotoHash: string;
-          userPhotoLink: string;
-          flowId: string;
-          internalVerificationRef: string;
-        } | undefined;
-
-        try {
-          const verificationResponse = await registrationApi.startVerification({
-            bvn: bvn.trim(),
-            nin: "", // NIN is not available in this flow
-            userId: phoneNumber.trim(),
-          });
-
-          if (verificationResponse.success && verificationResponse.status === "SUCCESS") {
-            verificationData = {
-              userPhotoHash: verificationResponse.userPhotoHash,
-              userPhotoLink: verificationResponse.userPhotoLink,
-              flowId: verificationResponse.flowId,
-              internalVerificationRef: verificationResponse.metadata.internalVerificationRef,
-            };
-          }
-        } catch (verificationError: any) {
-          console.error("Verification start failed:", verificationError);
+        const registrationToken = response.data;
+        if (!registrationToken) {
           setToast({
-            message: verificationError?.message || "Verification failed. Please try again.",
+            message: "OTP verified, but the registration token was missing. Please try again.",
             type: "error"
           });
-          setIsVerifyingOtp(false);
           return;
         }
 
@@ -596,7 +625,7 @@ export default function PersonalRegistrationScreen({
           domiciledBranch,
           dateOfBirth,
           otpVerified: true,
-          verificationData,
+          registrationToken
         };
         if (onOtpComplete) {
           onOtpComplete(formData);
@@ -607,7 +636,10 @@ export default function PersonalRegistrationScreen({
         setToast({ message: response.message, type: "error" });
       }
     } catch (error: any) {
-      setToast({ message: error?.message || "OTP verification failed", type: "error" });
+      setToast({
+        message: error?.message || "OTP verification failed",
+        type: "error"
+      });
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -636,19 +668,28 @@ export default function PersonalRegistrationScreen({
           />
         </>
       )}
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-6 pb-10 pt-14"
-        keyboardShouldPersistTaps="handled"
-      >
+      <View className="px-6 pt-14">
         <View className="flex-row items-center pt-6">
-          <BackButton onPress={showOtp ? () => setShowOtp(false) : onBack} />
+          <BackButton
+            onPress={
+              showOtp
+                ? () => setShowOtp(false)
+                : showDetails
+                  ? () => setShowDetails(false)
+                  : onBack
+            }
+          />
           <View className="ml-3 flex-1">
             <ProgressBar step={currentStep} totalSteps={totalSteps} />
           </View>
         </View>
-
-        {!showOtp ? (
+      </View>
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-6 pb-10 pt-7"
+        keyboardShouldPersistTaps="handled"
+      >
+        {!showOtp && !showDetails ? (
           <>
             <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
               Personal details
@@ -685,7 +726,9 @@ export default function PersonalRegistrationScreen({
                     <ActivityIndicator size="small" color="#123E7C" />
                   ) : bvnVerified ? (
                     <View className="h-5 w-5 items-center justify-center rounded-full bg-green-500">
-                      <Text className="text-[10px] font-bold text-white">✓</Text>
+                      <Text className="text-[10px] font-bold text-white">
+                        ✓
+                      </Text>
                     </View>
                   ) : (
                     <Hash size={20} color="#5C6478" />
@@ -710,51 +753,11 @@ export default function PersonalRegistrationScreen({
               />
 
               <Field
-                label="First Name"
-                placeholder="As shown on your account"
-                value={firstName}
-                onChangeText={setFirstName}
-                icon={<User size={20} color="#5C6478" />}
-                editable={!bvnVerified}
-              />
-
-              <Field
-                label="Middle Name"
-                placeholder="As shown on your account"
-                value={middleName}
-                onChangeText={setMiddleName}
-                icon={<User size={20} color="#5C6478" />}
-                editable={!bvnVerified}
-              />
-
-              <Field
                 label="Last Name"
                 placeholder="As shown on your account"
                 value={lastName}
                 onChangeText={setLastName}
                 icon={<User size={20} color="#5C6478" />}
-                editable={!bvnVerified}
-              />
-
-              <Field
-                label="Phone Number"
-                placeholder="+234 XXX XXX XXXX"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                keyboardType="phone-pad"
-                icon={<Phone size={20} color="#5C6478" />}
-                editable={!bvnVerified}
-              />
-
-              <Field
-                label="Email Address"
-                placeholder="your@email.com"
-                value={email}
-                onChangeText={(text) => setEmail(text.toLowerCase())}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                icon={<Mail size={20} color="#5C6478" />}
-                editable={!bvnVerified}
               />
 
               <Field
@@ -762,25 +765,25 @@ export default function PersonalRegistrationScreen({
                 placeholder="DD / MM / YYYY"
                 value={dateOfBirth}
                 onChangeText={setDateOfBirth}
-                editable={!bvnVerified}
+                editable={false}
                 onPress={() => {
-                  if (!bvnVerified) {
-                    Keyboard.dismiss();
-                    setTempDate(dateOfBirth ? parseDate(dateOfBirth) : new Date());
-                    setShowDatePicker(true);
-                  }
+                  Keyboard.dismiss();
+                  setTempDate(
+                    dateOfBirth ? parseDate(dateOfBirth) : new Date()
+                  );
+                  setShowDatePicker(true);
                 }}
                 onFocus={() => {
-                  if (!bvnVerified) {
-                    Keyboard.dismiss();
-                    setTempDate(dateOfBirth ? parseDate(dateOfBirth) : new Date());
-                    setShowDatePicker(true);
-                  }
+                  Keyboard.dismiss();
+                  setTempDate(
+                    dateOfBirth ? parseDate(dateOfBirth) : new Date()
+                  );
+                  setShowDatePicker(true);
                 }}
                 icon={<Calendar size={20} color="#5C6478" />}
               />
 
-              <Field
+              {/* <Field
                 label="Branch Code"
                 placeholder="e.g., 001"
                 value={branchCode}
@@ -795,12 +798,12 @@ export default function PersonalRegistrationScreen({
                 value={domiciledBranch}
                 onChangeText={setDomiciledBranch}
                 icon={<User size={20} color="#5C6478" />}
-              />
+              /> */}
             </View>
 
             {showError && (
               <Text className="mt-4 text-sm font-outfit text-rose-500">
-                All fields are required!.
+                Account number, BVN, last name and date of birth are required.
               </Text>
             )}
 
@@ -810,7 +813,7 @@ export default function PersonalRegistrationScreen({
                 disabled={isVerifyingBvn || isSubmitting}
                 className={[
                   "flex-row items-center justify-center rounded-2xl bg-[#123E7C] px-5 py-4 active:opacity-80",
-                  (isVerifyingBvn || isSubmitting) ? "opacity-60" : ""
+                  isVerifyingBvn || isSubmitting ? "opacity-60" : ""
                 ].join(" ")}
                 onPress={handleContinue}
               >
@@ -829,7 +832,7 @@ export default function PersonalRegistrationScreen({
               </Pressable>
             </View>
           </>
-        ) : (
+        ) : showOtp ? (
           <Animated.View entering={SlideInLeft.duration(400).springify()}>
             <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
               Enter code
@@ -853,7 +856,7 @@ export default function PersonalRegistrationScreen({
                 try {
                   const response = await registrationApi.sendOtp({
                     accountNumber: accountNumber.trim(),
-                    tokenType: "REGISTRATION_OTP",
+                    tokenType: "REGISTRATION_OTP"
                   });
                   if (response.success) {
                     console.log("OTP resent successfully");
@@ -862,7 +865,10 @@ export default function PersonalRegistrationScreen({
                     setToast({ message: response.message, type: "error" });
                   }
                 } catch (error: any) {
-                  setToast({ message: error?.message || "Failed to resend OTP", type: "error" });
+                  setToast({
+                    message: error?.message || "Failed to resend OTP",
+                    type: "error"
+                  });
                 }
               }}
             >
@@ -889,6 +895,77 @@ export default function PersonalRegistrationScreen({
                       Verify
                     </Text>
                     <Text className="ml-2 text-[28px] font-light text-white">
+                      ›
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </Animated.View>
+        ) : (
+          <Animated.View entering={SlideInLeft.duration(400).springify()}>
+            <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+              Confirm your details
+            </Text>
+            <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
+              We filled these details from your BVN. Review them before
+              continuing.
+            </Text>
+            <View className="mt-7 gap-5">
+              {[
+                ["Account Number", accountNumber],
+                ["BVN", bvn],
+                ["First Name", firstName],
+                ["Middle Name", middleName],
+                ["Last Name", lastName],
+                ["Phone Number", phoneNumber],
+                ["Email", email],
+                ["Date of Birth", dateOfBirth],
+                ["Branch Code", branchCode],
+                ["Domiciled Branch", domiciledBranch]
+              ]
+                .filter(([, value]) => Boolean(value))
+                .map(([label, value]) => {
+                  const displayValue =
+                    label === "Phone Number"
+                      ? maskPhoneNumber(value)
+                      : label === "Email"
+                        ? maskEmail(value)
+                        : value;
+
+                  return (
+                    <View
+                      key={label}
+                      className="rounded-2xl bg-[#ECEDF0] px-4 py-3"
+                    >
+                      <Text className="text-[12px] font-outfit text-[#8A93A6]">
+                        {label}
+                      </Text>
+                      <Text className="mt-1 text-[15px] font-outfit-medium text-[#1B2D4A]">
+                        {displayValue}
+                      </Text>
+                    </View>
+                  );
+                })}
+            </View>
+            <View className="mt-8">
+              <Pressable
+                accessibilityRole="button"
+                disabled={isSubmitting}
+                className={[
+                  "flex-row items-center justify-center rounded-2xl bg-[#123E7C] px-5 py-4",
+                  isSubmitting ? "opacity-60" : ""
+                ].join(" ")}
+                onPress={handleSubmitDetails}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Text className="text-base font-outfit-bold text-white">
+                      Continue{" "}
+                    </Text>
+                    <Text className="ml-2 text-[20px] font-light text-white">
                       ›
                     </Text>
                   </>
