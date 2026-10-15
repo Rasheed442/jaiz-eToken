@@ -220,10 +220,13 @@ export interface StartLivelinessRequest {
 export interface StartLivelinessData {
   verificationReference: string;
   flowId: string;
+  clientId?: string;
   userPhotoLink: string;
   userPhotoHash: string;
   metadata?: {
     internalVerificationRef?: string;
+    clientId?: string;
+    flowId?: string;
     userPhotoLink?: string;
     userPhotoHash?: string;
     [key: string]: unknown;

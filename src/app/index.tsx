@@ -328,6 +328,9 @@ export default function HomeScreen() {
             setTransitionDirection("forward");
             setScreen("forgot-passcode");
           }}
+          onOpenMetaMapPlayground={() => {
+            setTransitionDirection("forward");
+          }}
         />
       );
     }

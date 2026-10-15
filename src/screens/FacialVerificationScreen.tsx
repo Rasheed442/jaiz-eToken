@@ -12,6 +12,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
 import type { StartLivelinessData } from "../lib/api/types";
+import { METAMAP_CLIENT_ID } from "../lib/metamap";
 
 type FacialVerificationScreenProps = {
   onBack: () => void;
@@ -55,9 +56,6 @@ function BackButton({ onPress }: { onPress: () => void }) {
 
 const CONFIRM_INTERVAL_MS = 5000;
 const MAX_CONFIRM_ATTEMPTS = 60;
-const CLIENT_ID = "69280f8a987c3d12acd4f53a";
-const FLOW_ID = "69284636fc72cd31a69a66c0";
-
 export default function FacialVerificationScreen({
   onBack,
   onVerificationComplete,
@@ -149,6 +147,12 @@ export default function FacialVerificationScreen({
     if (!metaMapModule) return;
 
     const emitter = new NativeEventEmitter(metaMapModule);
+    const startedSubscription = emitter.addListener(
+      "verificationStarted",
+      () => {
+        console.info("[MetaMap] verificationStarted");
+      }
+    );
     const successSubscription = emitter.addListener(
       "verificationSuccess",
       () => {
@@ -170,6 +174,7 @@ export default function FacialVerificationScreen({
     );
 
     return () => {
+      startedSubscription.remove();
       successSubscription.remove();
       canceledSubscription.remove();
     };
@@ -210,12 +215,25 @@ export default function FacialVerificationScreen({
       }
 
       const verificationData = response.data;
+      const clientId =
+        verificationData.clientId ||
+        verificationData.metadata?.clientId ||
+        METAMAP_CLIENT_ID;
+      const flowId = verificationData.flowId || verificationData.metadata?.flowId;
+      const userPhotoLink =
+        verificationData.userPhotoLink ||
+        verificationData.metadata?.userPhotoLink;
+      const userPhotoHash =
+        verificationData.userPhotoHash ||
+        verificationData.metadata?.userPhotoHash;
       const internalVerificationRef =
         verificationData.metadata?.internalVerificationRef ||
         verificationData.verificationReference;
       if (
-        !verificationData.userPhotoLink ||
-        !verificationData.userPhotoHash ||
+        !clientId ||
+        !flowId ||
+        !userPhotoLink ||
+        !userPhotoHash ||
         !internalVerificationRef
       ) {
         throw new Error(
@@ -225,17 +243,19 @@ export default function FacialVerificationScreen({
 
       setLiveliness(verificationData);
       setIsFlowOpen(true);
-      metaMapModule.showFlow(CLIENT_ID, FLOW_ID, {
+      const metadata = {
         internalVerificationRef,
-        userPhotoLink: verificationData.userPhotoLink,
-        userPhotoLinkHash: verificationData.userPhotoHash
-      });
+        userPhotoLink,
+        userPhotoLinkHash: userPhotoHash
+      };
+
+      metaMapModule.showFlow(clientId, flowId, metadata);
     } catch (error) {
       setIsFlowOpen(false);
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Could not start MetaMap verification."
+          : "Could not start MetaMap verification."l
       );
     } finally {
       setIsStarting(false);

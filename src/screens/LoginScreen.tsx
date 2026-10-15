@@ -23,13 +23,15 @@ type LoginScreenProps = {
   onLogin: () => void;
   onGetStarted: () => void;
   onForgotPasscode: (username: string) => void;
+  onOpenMetaMapPlayground?: () => void;
 };
 
 const PASSCODE_LENGTH = 6;
 
 function getLoginFailureMessage(value: unknown): string {
   if (typeof value === "string" && value.trim()) return value.trim();
-  if (!value || typeof value !== "object") return "Login failed. Please try again.";
+  if (!value || typeof value !== "object")
+    return "Login failed. Please try again.";
 
   const response = value as Record<string, unknown>;
   const message = [
@@ -37,12 +39,15 @@ function getLoginFailureMessage(value: unknown): string {
     response.errorMessage,
     response.description,
     response.errorDescription
-  ].find((item): item is string => typeof item === "string" && item.trim().length > 0);
+  ].find(
+    (item): item is string => typeof item === "string" && item.trim().length > 0
+  );
   if (message) return message.trim();
 
   if (response.data !== undefined && response.data !== value) {
     const nestedMessage = getLoginFailureMessage(response.data);
-    if (nestedMessage !== "Login failed. Please try again.") return nestedMessage;
+    if (nestedMessage !== "Login failed. Please try again.")
+      return nestedMessage;
   }
 
   const errorCode = [response.errorCode, response.code].find(
@@ -267,7 +272,8 @@ export default function LoginScreen({
   onUsernameChange,
   onLogin,
   onGetStarted,
-  onForgotPasscode
+  onForgotPasscode,
+  onOpenMetaMapPlayground
 }: LoginScreenProps) {
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -485,6 +491,18 @@ export default function LoginScreen({
             Get started
           </Text>
         </Pressable>
+
+        {/* {__DEV__ && onOpenMetaMapPlayground ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenMetaMapPlayground}
+            className="mt-4 items-center py-2 active:opacity-70"
+          >
+            <Text className="text-[14px] font-outfit-medium text-[#67787F]">
+              MetaMap playground
+            </Text>
+          </Pressable>
+        ) : null} */}
       </View>
 
       {/* Full-screen loading overlay */}
