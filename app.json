@@ -53,10 +53,10 @@
       ],
       "expo-asset",
       "@react-native-community/datetimepicker",
-      "expo-camera",
       "expo-image",
       "expo-web-browser",
-      "react-native-metamap-sdk/plugin/build"
+      "react-native-metamap-sdk/plugin/build",
+      "./plugins/withMetaMapAndroidSdkPin"
     ],
     "experiments": {
       "typedRoutes": true
