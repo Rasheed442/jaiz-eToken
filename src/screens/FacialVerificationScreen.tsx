@@ -65,6 +65,7 @@ export default function FacialVerificationScreen({
   totalSteps = 5
 }: FacialVerificationScreenProps) {
   const [isStarting, setIsStarting] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [isFlowOpen, setIsFlowOpen] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
@@ -75,6 +76,45 @@ export default function FacialVerificationScreen({
   const isConfirmingRef = useRef(false);
   const isMountedRef = useRef(true);
   const completedRef = useRef(false);
+
+  const prepareLiveliness = useCallback(async () => {
+    if (!accountNumber || !registrationToken) {
+      setErrorMessage(
+        "Registration details are missing. Go back and try again."
+      );
+      return;
+    }
+
+    setIsPreparing(true);
+    setErrorMessage(null);
+    setLiveliness(null);
+    try {
+      const response = await registrationApi.startLiveliness({
+        accountNumber,
+        registrationToken
+      });
+
+      if (!response.success) {
+        throw new Error(
+          response.message || "Could not prepare liveliness verification."
+        );
+      }
+
+      setLiveliness(response.data);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not prepare MetaMap verification."
+      );
+    } finally {
+      setIsPreparing(false);
+    }
+  }, [accountNumber, registrationToken]);
+
+  useEffect(() => {
+    void prepareLiveliness();
+  }, [prepareLiveliness]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -181,7 +221,7 @@ export default function FacialVerificationScreen({
   }, [confirmWithBackend]);
 
   const handleStartVerification = async () => {
-    if (isStarting || isFlowOpen || isConfirming) return;
+    if (isStarting || isPreparing || isFlowOpen || isConfirming) return;
     if (!accountNumber || !registrationToken) {
       setErrorMessage(
         "Registration details are missing. Go back and try again."
@@ -197,24 +237,18 @@ export default function FacialVerificationScreen({
       return;
     }
 
+    if (!liveliness) {
+      void prepareLiveliness();
+      return;
+    }
+
     setIsStarting(true);
     setErrorMessage(null);
     setIsAwaitingConfirmation(false);
     completedRef.current = false;
 
     try {
-      const response = await registrationApi.startLiveliness({
-        accountNumber,
-        registrationToken
-      });
-
-      if (!response.success) {
-        throw new Error(
-          response.message || "Could not start liveliness verification."
-        );
-      }
-
-      const verificationData = response.data;
+      const verificationData = liveliness;
       const clientId =
         verificationData.clientId ||
         verificationData.metadata?.clientId ||
@@ -226,7 +260,8 @@ export default function FacialVerificationScreen({
         verificationData.metadata?.userPhotoLink;
       const userPhotoHash =
         verificationData.userPhotoHash ||
-        verificationData.metadata?.userPhotoHash;
+        verificationData.metadata?.userPhotoHash ||
+        verificationData.metadata?.userPhotoLinkHash;
       const internalVerificationRef =
         verificationData.metadata?.internalVerificationRef ||
         verificationData.verificationReference;
@@ -245,6 +280,7 @@ export default function FacialVerificationScreen({
       setLiveliness(verificationData);
       setIsFlowOpen(true);
       const metadata = {
+        ...verificationData.metadata,
         internalVerificationRef,
         userPhotoLink,
         userPhotoLinkHash: userPhotoHash
@@ -267,7 +303,7 @@ export default function FacialVerificationScreen({
     if (liveliness) void confirmWithBackend();
   };
 
-  const busy = isStarting || isFlowOpen || isConfirming;
+  const busy = isPreparing || isStarting || isFlowOpen || isConfirming;
 
   return (
     <SafeAreaView className="flex-1 bg-[#F3F5F7]">
@@ -335,13 +371,17 @@ export default function FacialVerificationScreen({
                 disabled={busy}
               >
                 <Text className="text-[18px] font-outfit-semibold text-white">
-                  {isStarting
-                    ? "Starting verification..."
-                    : isConfirming
-                      ? "Confirming with Jaiz..."
-                      : isFlowOpen
-                        ? "Verification in progress..."
-                        : "Start Verification"}
+                  {isPreparing
+                    ? "Preparing verification..."
+                    : isStarting
+                      ? "Starting verification..."
+                      : isConfirming
+                        ? "Confirming with Jaiz..."
+                        : isFlowOpen
+                          ? "Verification in progress..."
+                          : !liveliness
+                            ? "Retry preparation"
+                            : "Start Verification"}
                 </Text>
                 {!busy && (
                   <Text className="ml-2 text-[22px] font-light text-white">

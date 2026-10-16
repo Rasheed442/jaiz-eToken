@@ -229,6 +229,7 @@ export interface StartLivelinessData {
     flowId?: string;
     userPhotoLink?: string;
     userPhotoHash?: string;
+    userPhotoLinkHash?: string;
     [key: string]: unknown;
   };
   attemptsRemaining?: number;

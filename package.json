@@ -51,14 +51,10 @@
   },
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "buildRelease": "npx eas-cli build --platform android --profile preview",
-    "buildReleaseLocal": "npx eas-cli build --platform android --profile preview --local --output ./jaiz-preview.apk",
-    "buildMetaMapPlayground": "npx eas-cli build --platform android --profile development --local --output ./jaiz-metamap-playground.apk",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "buildRelease": "NODE_ENV=production cd android && ./gradlew :app:assembleRelease && cd .."
   },
   "private": true
 }
