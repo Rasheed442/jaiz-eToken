@@ -64,8 +64,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "226556b8-3beb-4844-a6a4-467aa4343b2f"
+        "projectId": "07db28b4-9f49-482e-9c00-17eac4dc501e"
       }
-    }
+    },
+    "owner": "ralphadigital"
   }
 }

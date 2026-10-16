@@ -219,7 +219,8 @@ export default function FacialVerificationScreen({
         verificationData.clientId ||
         verificationData.metadata?.clientId ||
         METAMAP_CLIENT_ID;
-      const flowId = verificationData.flowId || verificationData.metadata?.flowId;
+      const flowId =
+        verificationData.flowId || verificationData.metadata?.flowId;
       const userPhotoLink =
         verificationData.userPhotoLink ||
         verificationData.metadata?.userPhotoLink;
@@ -255,7 +256,7 @@ export default function FacialVerificationScreen({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Could not start MetaMap verification."l
+          : "Could not start MetaMap verification."
       );
     } finally {
       setIsStarting(false);
