@@ -3,7 +3,7 @@
  * TypeScript types for API requests and responses
  */
 
-export type CustomerType = 'PERSONAL' | 'CORPORATE';
+export type CustomerType = "PERSONAL" | "CORPORATE";
 
 export interface AccountVerificationRequest {
   accountNumber: string;
@@ -87,8 +87,7 @@ export interface InitiateRegistrationErrorResponse {
  * Initiate Registration Response (Union)
  */
 export type InitiateRegistrationResponse =
-  | InitiateRegistrationSuccessResponse
-  | InitiateRegistrationErrorResponse;
+  InitiateRegistrationSuccessResponse | InitiateRegistrationErrorResponse;
 
 /**
  * BVN Verification Request
@@ -137,15 +136,14 @@ export interface BvnVerificationErrorResponse {
  * BVN Verification Response (Union)
  */
 export type BvnVerificationResponse =
-  | BvnVerificationSuccessResponse
-  | BvnVerificationErrorResponse;
+  BvnVerificationSuccessResponse | BvnVerificationErrorResponse;
 
 /**
  * Send OTP Request
  */
 export interface SendOtpRequest {
   accountNumber: string;
-  tokenType: 'REGISTRATION_OTP';
+  tokenType: "REGISTRATION_OTP";
 }
 
 /**
@@ -170,9 +168,7 @@ export interface SendOtpErrorResponse {
 /**
  * Send OTP Response (Union)
  */
-export type SendOtpResponse =
-  | SendOtpSuccessResponse
-  | SendOtpErrorResponse;
+export type SendOtpResponse = SendOtpSuccessResponse | SendOtpErrorResponse;
 
 /**
  * Verify OTP Request
@@ -206,8 +202,7 @@ export interface VerifyOtpErrorResponse {
  * Verify OTP Response (Union)
  */
 export type VerifyOtpResponse =
-  | VerifyOtpSuccessResponse
-  | VerifyOtpErrorResponse;
+  VerifyOtpSuccessResponse | VerifyOtpErrorResponse;
 
 /**
  * Start a registration liveliness check
@@ -249,7 +244,8 @@ export interface StartLivelinessErrorResponse {
   timestamp: string;
 }
 
-export type StartLivelinessResult = StartLivelinessResponse | StartLivelinessErrorResponse;
+export type StartLivelinessResult =
+  StartLivelinessResponse | StartLivelinessErrorResponse;
 
 export interface ConfirmLivelinessRequest {
   accountNumber: string;
@@ -259,12 +255,14 @@ export interface ConfirmLivelinessRequest {
 export interface ConfirmLivelinessResponse {
   success: boolean;
   message: string;
-  data?: {
-    status?: string;
-    flowStatus?: string;
-    verificationStatus?: string;
-    [key: string]: unknown;
-  } | string;
+  data?:
+    | {
+        status?: string;
+        flowStatus?: string;
+        verificationStatus?: string;
+        [key: string]: unknown;
+      }
+    | string;
   errorCode?: string;
   timestamp?: string;
 }
@@ -313,8 +311,7 @@ export interface CreateProfileErrorResponse {
  * Create Profile Response (Union)
  */
 export type CreateProfileResponse =
-  | CreateProfileSuccessResponse
-  | CreateProfileErrorResponse;
+  CreateProfileSuccessResponse | CreateProfileErrorResponse;
 
 /**
  * Device Registration Request
@@ -356,8 +353,7 @@ export interface DeviceRegistrationErrorResponse {
  * Device Registration Response (Union)
  */
 export type DeviceRegistrationResponse =
-  | DeviceRegistrationSuccessResponse
-  | DeviceRegistrationErrorResponse;
+  DeviceRegistrationSuccessResponse | DeviceRegistrationErrorResponse;
 
 /**
  * Common API Error Response
@@ -432,8 +428,7 @@ export interface StartVerificationErrorResponse {
  * Start Verification Response (Union)
  */
 export type StartVerificationResponse =
-  | StartVerificationSuccessResponse
-  | StartVerificationErrorResponse;
+  StartVerificationSuccessResponse | StartVerificationErrorResponse;
 
 /**
  * MetaMap Webhook Request
@@ -478,8 +473,7 @@ export interface MetaMapWebhookErrorResponse {
  * MetaMap Webhook Response (Union)
  */
 export type MetaMapWebhookResponse =
-  | MetaMapWebhookSuccessResponse
-  | MetaMapWebhookErrorResponse;
+  MetaMapWebhookSuccessResponse | MetaMapWebhookErrorResponse;
 
 /**
  * Verification Status Response (Success)
@@ -507,8 +501,7 @@ export interface VerificationStatusErrorResponse {
  * Verification Status Response (Union)
  */
 export type VerificationStatusResponse =
-  | VerificationStatusSuccessResponse
-  | VerificationStatusErrorResponse;
+  VerificationStatusSuccessResponse | VerificationStatusErrorResponse;
 
 /**
  * Activate eToken Request
@@ -546,8 +539,7 @@ export interface ActivateEtokenErrorResponse {
  * Activate eToken Response (Union)
  */
 export type ActivateEtokenResponse =
-  | ActivateEtokenSuccessResponse
-  | ActivateEtokenErrorResponse;
+  ActivateEtokenSuccessResponse | ActivateEtokenErrorResponse;
 
 /**
  * Login Request
@@ -592,9 +584,7 @@ export interface LoginErrorResponse {
 /**
  * Login Response (Union)
  */
-export type LoginResponse =
-  | LoginSuccessResponse
-  | LoginErrorResponse;
+export type LoginResponse = LoginSuccessResponse | LoginErrorResponse;
 
 /**
  * Forgot Passcode Request
@@ -627,8 +617,7 @@ export interface ForgotPasscodeErrorResponse {
  * Forgot Passcode Response (Union)
  */
 export type ForgotPasscodeResponse =
-  | ForgotPasscodeSuccessResponse
-  | ForgotPasscodeErrorResponse;
+  ForgotPasscodeSuccessResponse | ForgotPasscodeErrorResponse;
 
 /**
  * Verify Security Questions Request
@@ -660,8 +649,7 @@ export interface VerifySecurityQuestionsErrorResponse {
  * Verify Security Questions Response (Union)
  */
 export type VerifySecurityQuestionsResponse =
-  | VerifySecurityQuestionsSuccessResponse
-  | VerifySecurityQuestionsErrorResponse;
+  VerifySecurityQuestionsSuccessResponse | VerifySecurityQuestionsErrorResponse;
 
 /**
  * Reset Passcode Request
@@ -696,8 +684,7 @@ export interface ResetPasscodeErrorResponse {
  * Reset Passcode Response (Union)
  */
 export type ResetPasscodeResponse =
-  | ResetPasscodeSuccessResponse
-  | ResetPasscodeErrorResponse;
+  ResetPasscodeSuccessResponse | ResetPasscodeErrorResponse;
 
 /**
  * Refresh Token Request
@@ -735,8 +722,7 @@ export interface RefreshTokenErrorResponse {
  * Refresh Token Response (Union)
  */
 export type RefreshTokenResponse =
-  | RefreshTokenSuccessResponse
-  | RefreshTokenErrorResponse;
+  RefreshTokenSuccessResponse | RefreshTokenErrorResponse;
 
 /**
  * Logout Request
@@ -767,9 +753,7 @@ export interface LogoutErrorResponse {
 /**
  * Logout Response (Union)
  */
-export type LogoutResponse =
-  | LogoutSuccessResponse
-  | LogoutErrorResponse;
+export type LogoutResponse = LogoutSuccessResponse | LogoutErrorResponse;
 
 /**
  * Generate Token Request
@@ -811,5 +795,4 @@ export interface GenerateTokenErrorResponse {
  * Generate Token Response (Union)
  */
 export type GenerateTokenResponse =
-  | GenerateTokenSuccessResponse
-  | GenerateTokenErrorResponse;
+  GenerateTokenSuccessResponse | GenerateTokenErrorResponse;

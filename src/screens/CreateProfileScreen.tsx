@@ -1,19 +1,26 @@
 import * as Application from "expo-application";
 import * as Device from "expo-device";
-import { Check, ChevronLeft, Delete, Eye, EyeOff, ShieldCheck } from "lucide-react-native";
+import {
+  Check,
+  ChevronLeft,
+  Delete,
+  Eye,
+  EyeOff,
+  ShieldCheck
+} from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Animated,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Animated,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
@@ -25,6 +32,7 @@ type CreateProfileScreenProps = {
   onProfileCreated: () => void;
   onGoToDashboard: () => void;
   accountNumber: string;
+  phoneNumber: string;
   progress?: number; // 0-1, for the top progress bar
 };
 
@@ -76,7 +84,9 @@ function PasscodeDots({ length, filled }: { length: number; filled: number }) {
                 isFilled ? "bg-[#123E7C]" : "border-2 border-[#D6D6D6]"
               }`}
             />
-            {i === 2 && i < length - 1 && <View className="mx-2 h-0.5 w-5 bg-[#D6D6D6]" />}
+            {i === 2 && i < length - 1 && (
+              <View className="mx-2 h-0.5 w-5 bg-[#D6D6D6]" />
+            )}
             {i < length - 1 && i !== 2 && <View className="w-4" />}
           </View>
         );
@@ -101,15 +111,23 @@ function KeypadButton({
       onPress={onPress}
       className="h-20 flex-1 items-center justify-center active:opacity-70"
     >
-      {icon ? icon : <Text className="text-[28px] font-outfit-medium text-[#1B2D4A]">{label}</Text>}
+      {icon ? (
+        icon
+      ) : (
+        <Text className="text-[28px] font-outfit-medium text-[#1B2D4A]">
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }
 
 function StepPill({ text }: { text: string }) {
   return (
-    <View className="rounded-full border border-gray-100 bg-[#F2F2F4] px-3 py-1">
-      <Text className="text-[12px] font-outfit-medium text-[#67787F]">{text}</Text>
+    <View className="rounded-full border border-gray-100 bg-[#F2F2F4] px-4 py-2">
+      <Text className="text-[14px] font-outfit-medium text-[#67787F]">
+        {text}
+      </Text>
     </View>
   );
 }
@@ -119,19 +137,23 @@ export default function CreateProfileScreen({
   onProfileCreated,
   onGoToDashboard,
   accountNumber,
+  phoneNumber,
   progress = 0.8
 }: CreateProfileScreenProps) {
-  const [username, setUsername] = useState("");
   const [passcode, setPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
-  const [securityAnswers, setSecurityAnswers] = useState<string[]>(SECURITY_QUESTIONS.map(() => ""));
+  const [securityAnswers, setSecurityAnswers] = useState<string[]>(
+    SECURITY_QUESTIONS.map(() => "")
+  );
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [showAnswers, setShowAnswers] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [activationMessage, setActivationMessage] = useState<string | null>(null);
+  const [activationMessage, setActivationMessage] = useState<string | null>(
+    null
+  );
   const [showActivationScreen, setShowActivationScreen] = useState(false);
 
   const answerRefs = useRef<(TextInput | null)[]>([]);
@@ -169,14 +191,13 @@ export default function CreateProfileScreen({
   };
 
   const handleDigitPress = (digit: string) => {
-    // Close the phone keyboard if the username field left it open.
     Keyboard.dismiss();
 
     if (transitioningRef.current) return;
     setError(null);
 
-    if (!username.trim()) {
-      setError("Enter a username before choosing your passcode");
+    if (!phoneNumber.trim()) {
+      setError("A verified phone number is required to create your profile");
       return;
     }
 
@@ -245,11 +266,13 @@ export default function CreateProfileScreen({
     if (trimmed.length < MIN_ANSWER_LENGTH) return "Answer is too short";
     return null;
   });
-  const answeredCount = securityAnswers.filter((a) => a.trim().length >= MIN_ANSWER_LENGTH).length;
+  const answeredCount = securityAnswers.filter(
+    (a) => a.trim().length >= MIN_ANSWER_LENGTH
+  ).length;
 
   const validateForm = (): boolean => {
-    if (!username.trim()) {
-      setError("Username is required");
+    if (!phoneNumber.trim()) {
+      setError("A verified phone number is required");
       return false;
     }
     if (passcode.length !== PASSCODE_LENGTH) {
@@ -284,7 +307,7 @@ export default function CreateProfileScreen({
 
       const payload = {
         accountNumber,
-        username: username.trim(),
+        username: phoneNumber.trim(),
         passcode,
         confirmPasscode,
         securityQuestions
@@ -322,8 +345,12 @@ export default function CreateProfileScreen({
 
       // Activate eToken after device registration
       console.log("Activating eToken...");
-      const activationResponse = await registrationApi.activateEtoken(accountNumber);
-      console.log("eToken activated successfully", activationResponse?.success ?? "");
+      const activationResponse =
+        await registrationApi.activateEtoken(accountNumber);
+      console.log(
+        "eToken activated successfully",
+        activationResponse?.success ?? ""
+      );
 
       if (activationResponse?.success && activationResponse?.data) {
         // Store authentication data
@@ -334,7 +361,7 @@ export default function CreateProfileScreen({
           customerName: activationResponse.data.customerName,
           accountNumber,
           passcode,
-          deviceId,
+          deviceId
         });
 
         setActivationMessage(activationResponse.message);
@@ -382,47 +409,37 @@ export default function CreateProfileScreen({
         </View>
 
         {/*
-          Steps 1 and 2 (username + passcode keypad): deliberately NOT wrapped in
-          KeyboardAvoidingView, so opening the phone keyboard for the username never
-          pushes the keypad up. Tapping outside the input closes the keyboard.
+          Steps 1 and 2 (passcode keypad) do not need keyboard avoidance.
         */}
         {currentStep < 3 && (
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <TouchableWithoutFeedback
+            onPress={Keyboard.dismiss}
+            accessible={false}
+          >
             <View className="flex-1">
-              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+              <Text className="mt-5 text-[26px] font-outfit-semibold text-[#1B2D4A]">
                 Create your profile
               </Text>
               <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
-                Choose a username and a 6-digit passcode to protect your token.
+                Create a 6-digit passcode to protect your token.
               </Text>
 
-              <Text className="mt-8 text-[14px] font-outfit-medium text-[#1B2D4A]">Username</Text>
-              <TextInput
-                value={username}
-                onChangeText={(v) => {
-                  setUsername(v);
-                  setError(null);
-                }}
-                placeholder="Enter a username"
-                placeholderTextColor="#9AA5B1"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="done"
-                blurOnSubmit
-                onSubmitEditing={Keyboard.dismiss}
-                className="mt-2 rounded-2xl bg-[#E8E8E8] px-4 py-4 text-[16px] font-outfit text-[#1B2D4A]"
-              />
-
-              <View className="mt-8 flex-row items-center justify-between">
+              <View className="mt-5 flex-row items-center justify-between">
                 <Text className="text-[14px] font-outfit-medium text-[#1B2D4A]">
-                  {currentStep === 1 ? "Enter 6-digit passcode" : "Confirm 6-digit passcode"}
+                  {currentStep === 1
+                    ? "Enter 6-digit passcode"
+                    : "Confirm 6-digit passcode"}
                 </Text>
-                <StepPill text={currentStep === 1 ? "Step 1 of 3" : "Step 2 of 3"} />
+                <StepPill
+                  text={currentStep === 1 ? "Step 1 of 3" : "Step 2 of 3"}
+                />
               </View>
 
               <PasscodeDots
                 length={PASSCODE_LENGTH}
-                filled={currentStep === 1 ? passcode.length : confirmPasscode.length}
+                filled={
+                  currentStep === 1 ? passcode.length : confirmPasscode.length
+                }
               />
 
               {error && (
@@ -435,14 +452,24 @@ export default function CreateProfileScreen({
                 {keypadRows.map((row, i) => (
                   <View key={i} className="flex-row">
                     {row.map((digit) => (
-                      <KeypadButton key={digit} label={digit} onPress={() => handleDigitPress(digit)} />
+                      <KeypadButton
+                        key={digit}
+                        label={digit}
+                        onPress={() => handleDigitPress(digit)}
+                      />
                     ))}
                   </View>
                 ))}
                 <View className="flex-row">
                   <View className="h-20 flex-1" />
-                  <KeypadButton label="0" onPress={() => handleDigitPress("0")} />
-                  <KeypadButton onPress={handleDelete} icon={<Delete size={22} color="#1B2D4A" />} />
+                  <KeypadButton
+                    label="0"
+                    onPress={() => handleDigitPress("0")}
+                  />
+                  <KeypadButton
+                    onPress={handleDelete}
+                    icon={<Delete size={22} color="#1B2D4A" />}
+                  />
                 </View>
               </View>
             </View>
@@ -487,7 +514,8 @@ export default function CreateProfileScreen({
                   Security questions
                 </Text>
                 <Text className="mt-2 text-[15px] font-outfit leading-[22px] text-[#67787F]">
-                  Answer these three questions. Pick answers only you would know.
+                  Answer these three questions. Pick answers only you would
+                  know.
                 </Text>
 
                 {/* Answered counter + show/hide toggle */}
@@ -497,7 +525,9 @@ export default function CreateProfileScreen({
                   </Text>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={showAnswers ? "Hide answers" : "Show answers"}
+                    accessibilityLabel={
+                      showAnswers ? "Hide answers" : "Show answers"
+                    }
                     onPress={() => setShowAnswers((v) => !v)}
                     className="flex-row items-center active:opacity-70"
                   >
@@ -526,8 +556,8 @@ export default function CreateProfileScreen({
                         isFocused
                           ? "border-[#123E7C]"
                           : showFieldError
-                          ? "border-[#F0B4B4]"
-                          : "border-[#E3E8EE]"
+                            ? "border-[#F0B4B4]"
+                            : "border-[#E3E8EE]"
                       }`}
                     >
                       <View className="flex-row items-start">
@@ -554,9 +584,13 @@ export default function CreateProfileScreen({
                           answerRefs.current[index] = r;
                         }}
                         value={securityAnswers[index]}
-                        onChangeText={(value) => handleSecurityAnswerChange(index, value)}
+                        onChangeText={(value) =>
+                          handleSecurityAnswerChange(index, value)
+                        }
                         onFocus={() => setFocusedIndex(index)}
-                        onBlur={() => setFocusedIndex((cur) => (cur === index ? null : cur))}
+                        onBlur={() =>
+                          setFocusedIndex((cur) => (cur === index ? null : cur))
+                        }
                         placeholder="Your answer"
                         placeholderTextColor="#9AA5B1"
                         secureTextEntry={!showAnswers}
@@ -588,8 +622,9 @@ export default function CreateProfileScreen({
                 <View className="mt-5 flex-row items-start rounded-2xl bg-[#EAF1FB] p-4">
                   <ShieldCheck size={18} color="#123E7C" />
                   <Text className="ml-3 flex-1 text-[13px] font-outfit leading-[19px] text-[#35506E]">
-                    These answers help verify it&apos;s really you if you need to recover your profile. Keep
-                    them private and easy for you to remember.
+                    These answers help verify it&apos;s really you if you need
+                    to recover your profile. Keep them private and easy for you
+                    to remember.
                   </Text>
                 </View>
 
@@ -609,7 +644,9 @@ export default function CreateProfileScreen({
                     isLoading ? "opacity-70" : ""
                   }`}
                 >
-                  {isLoading && <ActivityIndicator size="small" color="#FFFFFF" />}
+                  {isLoading && (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  )}
                   <Text
                     className={`text-[18px] font-outfit-semibold text-white ${isLoading ? "ml-3" : ""}`}
                   >

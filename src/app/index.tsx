@@ -83,6 +83,7 @@ export default function HomeScreen() {
   const [customerName, setCustomerName] = useState("");
   const [registrationToken, setRegistrationToken] = useState<string>();
   const [accountNumber, setAccountNumber] = useState<string | undefined>();
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [nextScreen, setNextScreen] = useState<Screen | null>(null);
   const [forgotPasscodeUsername, setForgotPasscodeUsername] = useState("");
   const [forgotPasscodeAccountNumber, setForgotPasscodeAccountNumber] =
@@ -153,6 +154,7 @@ export default function HomeScreen() {
               console.log("OTP complete with values:", values);
               setRegistrationToken(values.registrationToken);
               setAccountNumber(values.accountNumber);
+              setPhoneNumber(values.phoneNumber);
               setTransitionDirection("forward");
               setScreen("facial-verification");
             }}
@@ -299,6 +301,7 @@ export default function HomeScreen() {
               }
             }}
             accountNumber={accountNumber || ""}
+            phoneNumber={phoneNumber}
             progress={0.8}
           />
         </View>

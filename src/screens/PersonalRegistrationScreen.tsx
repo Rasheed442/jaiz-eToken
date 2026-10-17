@@ -295,7 +295,8 @@ export default function PersonalRegistrationScreen({
   const [showOtp, setShowOtp] = useState(false);
   const [currentStep, setCurrentStep] = useState(step);
   const [otpCode, setOtpCode] = useState("");
-  const [verifiedRegistrationToken, setVerifiedRegistrationToken] = useState("");
+  const [verifiedRegistrationToken, setVerifiedRegistrationToken] =
+    useState("");
   const [resendSeconds, setResendSeconds] = useState(0);
   const [isVerifyingAccount, setIsVerifyingAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -368,7 +369,9 @@ export default function PersonalRegistrationScreen({
         tokenType: "REGISTRATION_OTP"
       });
       if (!otpResponse.success) {
-        throw new Error(otpResponse.message || "Failed to send verification code.");
+        throw new Error(
+          otpResponse.message || "Failed to send verification code."
+        );
       }
 
       setCurrentStep(step + 1);
@@ -546,7 +549,9 @@ export default function PersonalRegistrationScreen({
                   )
                 }
                 helperText={
-                  isVerifyingAccount ? "Validating account number..." : undefined
+                  isVerifyingAccount
+                    ? "Validating account number..."
+                    : undefined
                 }
               />
             </View>
@@ -658,8 +663,8 @@ export default function PersonalRegistrationScreen({
               Confirm your details
             </Text>
             <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
-              We retrieved these details using your account number. Review
-              them before continuing.
+              We retrieved these details using your account number. Review them
+              before continuing.
             </Text>
             <View className="mt-7 gap-5">
               {[
@@ -671,7 +676,7 @@ export default function PersonalRegistrationScreen({
                 ["Phone Number", phoneNumber],
                 ["Email", email],
                 ["Date of Birth", dateOfBirth],
-                ["Branch Code", branchCode],
+                // ["Branch Code", branchCode],
                 ["Domiciled Branch", domiciledBranch]
               ]
                 .filter(([, value]) => Boolean(value))
@@ -724,7 +729,6 @@ export default function PersonalRegistrationScreen({
             </View>
           </Animated.View>
         )}
-
       </ScrollView>
     </KeyboardAvoidingView>
   );

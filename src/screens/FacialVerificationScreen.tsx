@@ -56,6 +56,14 @@ function BackButton({ onPress }: { onPress: () => void }) {
 
 const CONFIRM_INTERVAL_MS = 5000;
 const MAX_CONFIRM_ATTEMPTS = 60;
+const PENDING_LIVELINESS_STATUSES = new Set([
+  "PENDING",
+  "PROCESSING",
+  "IN_PROGRESS",
+  "INITIATED",
+  "SUBMITTED",
+  "UNDER_REVIEW"
+]);
 export default function FacialVerificationScreen({
   onBack,
   onVerificationComplete,
@@ -73,6 +81,7 @@ export default function FacialVerificationScreen({
     null
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null);
   const isConfirmingRef = useRef(false);
   const isMountedRef = useRef(true);
   const completedRef = useRef(false);
@@ -135,6 +144,7 @@ export default function FacialVerificationScreen({
     isConfirmingRef.current = true;
     setIsConfirming(true);
     setErrorMessage(null);
+    setConfirmationMessage("Waiting for verification results...");
 
     try {
       for (let attempt = 1; attempt <= MAX_CONFIRM_ATTEMPTS; attempt += 1) {
@@ -149,17 +159,37 @@ export default function FacialVerificationScreen({
             registrationToken
           });
 
-          if (response.success) {
-            completedRef.current = true;
-            onVerificationComplete();
+          const resultData = typeof response.data === "object" ? response.data : null;
+          const statusValue =
+            resultData?.status ??
+            resultData?.flowStatus ??
+            resultData?.verificationStatus ??
+            (typeof response.data === "string" ? response.data : "");
+          const status = typeof statusValue === "string"
+            ? statusValue.trim().toUpperCase()
+            : "";
+
+          if (!response.success) {
+            if (isMountedRef.current) {
+              setErrorMessage(response.message || "Liveliness verification failed.");
+              setConfirmationMessage(null);
+            }
             return;
           }
 
-          if (isMountedRef.current) {
-            setErrorMessage(
-              response.message || "Verification is still processing."
-            );
+          if (PENDING_LIVELINESS_STATUSES.has(status)) {
+            if (isMountedRef.current) {
+              setConfirmationMessage(
+                response.message || "Your verification is still being processed. Checking again shortly."
+              );
+            }
+            continue;
           }
+
+          if (isMountedRef.current) setConfirmationMessage(null);
+          completedRef.current = true;
+          onVerificationComplete();
+          return;
         } catch (error) {
           if (isMountedRef.current) {
             setErrorMessage(
@@ -246,6 +276,7 @@ export default function FacialVerificationScreen({
 
     setIsStarting(true);
     setErrorMessage(null);
+    setConfirmationMessage(null);
     setIsAwaitingConfirmation(false);
     completedRef.current = false;
 
@@ -344,6 +375,14 @@ export default function FacialVerificationScreen({
                 className="text-center text-[14px] font-outfit text-[#B42318]"
               >
                 {errorMessage}
+              </Text>
+            </View>
+          )}
+
+          {confirmationMessage && !errorMessage && (
+            <View className="mt-6 rounded-xl bg-[#EAF1FB] px-4 py-3">
+              <Text className="text-center text-[14px] font-outfit text-[#35506E]">
+                {confirmationMessage}
               </Text>
             </View>
           )}
