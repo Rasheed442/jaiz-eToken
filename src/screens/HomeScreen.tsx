@@ -223,7 +223,7 @@ export default function HomeScreen({
       const deviceFingerprint = "sha256_" + deviceId;
 
       const payload = {
-        username,
+        phoneNumber: username,
         passcode: passcodeInput,
         deviceId,
         deviceFingerprint,

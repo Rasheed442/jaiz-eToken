@@ -124,8 +124,8 @@ function KeypadButton({
 
 function StepPill({ text }: { text: string }) {
   return (
-    <View className="rounded-full border border-gray-100 bg-[#F2F2F4] px-4 py-2">
-      <Text className="text-[14px] font-outfit-medium text-[#67787F]">
+    <View className="rounded-full border border-gray-100 bg-[#F2F2F4] px-8 py-5">
+      <Text className="text-[16px] font-outfit-medium text-[#67787F]">
         {text}
       </Text>
     </View>

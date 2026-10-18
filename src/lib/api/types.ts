@@ -545,7 +545,7 @@ export type ActivateEtokenResponse =
  * Login Request
  */
 export interface LoginRequest {
-  username: string;
+  phoneNumber: string;
   passcode: string;
   deviceId: string;
   deviceFingerprint: string;

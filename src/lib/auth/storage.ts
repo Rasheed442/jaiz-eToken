@@ -165,13 +165,12 @@ export const authStorage = {
 
   /**
    * Clear authentication session (logout)
-   * Keeps username remembered for convenience
+   * Keeps username and customer name remembered for convenience
    */
   async clearAuthSession(): Promise<void> {
     try {
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
-      await SecureStore.deleteItemAsync(CUSTOMER_NAME_KEY);
       await SecureStore.deleteItemAsync(ACCOUNT_NUMBER_KEY);
       await SecureStore.deleteItemAsync(PASSCODE_KEY);
       await SecureStore.deleteItemAsync(DEVICE_ID_KEY);

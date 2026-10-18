@@ -19,7 +19,9 @@ import { authStorage } from "../lib/auth/storage";
 
 type LoginScreenProps = {
   username: string;
+  customerName: string;
   onUsernameChange?: (value: string) => void;
+  onCustomerNameChange?: (value: string) => void;
   onLogin: () => void;
   onGetStarted: () => void;
   onForgotPasscode: (username: string) => void;
@@ -269,7 +271,9 @@ function LoadingOverlay({
 
 export default function LoginScreen({
   username,
+  customerName,
   onUsernameChange,
+  onCustomerNameChange,
   onLogin,
   onGetStarted,
   onForgotPasscode,
@@ -292,7 +296,10 @@ export default function LoginScreen({
     checkAuthStatus();
   }, []);
 
-  const initial = username?.trim().charAt(0).toUpperCase() || "?";
+  const nameParts = customerName.trim().split(/\s+/).filter(Boolean);
+  const initial = nameParts.length > 1
+    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+    : nameParts[0]?.[0]?.toUpperCase() || "J";
 
   const handleDigitPress = async (digit: string) => {
     if (passcode.length >= PASSCODE_LENGTH) return;
@@ -313,7 +320,7 @@ export default function LoginScreen({
     if (isLoading) return;
 
     if (!username.trim()) {
-      setError("Username is required");
+      setError("Phone number is required");
       return;
     }
 
@@ -333,7 +340,7 @@ export default function LoginScreen({
       const deviceFingerprint = "sha256_" + deviceId;
 
       const payload = {
-        username: username.trim(),
+        phoneNumber: username.trim(),
         passcode: passcodeToSubmit,
         deviceId,
         deviceFingerprint,
@@ -358,6 +365,7 @@ export default function LoginScreen({
         if (onUsernameChange) {
           onUsernameChange(response.data.username);
         }
+        onCustomerNameChange?.(response.data.customerName);
 
         // Call onLogin callback to navigate to dashboard
         onLogin();
@@ -403,7 +411,7 @@ export default function LoginScreen({
           </View>
 
           <Text className="mt-5 text-[26px] text-center font-outfit-semibold text-white">
-            Welcome back
+            Hello{customerName.trim() ? `, ${customerName.trim()}` : ""}
           </Text>
           <Text className="mt-1 text-[16px] text-center font-outfit text-[#C7D4E8]">
             Log in to access your eToken
@@ -416,7 +424,7 @@ export default function LoginScreen({
           ""
         ) : (
           <Text className="text-[14px] font-outfit-medium text-[#1B2D4A]">
-            Username / CIF
+            Phone Number
           </Text>
         )}
         {Checkusername ? (

@@ -14,6 +14,7 @@ import {
 import Animated, {
   SlideInLeft
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type CorporateRegistrationScreenProps = {
   onBack: () => void;
@@ -193,6 +194,7 @@ export default function CorporateRegistrationScreen({
   step = 1,
   totalSteps = 5
 }: CorporateRegistrationScreenProps) {
+  const insets = useSafeAreaInsets();
   const [corporateAccountNumber, setCorporateAccountNumber] = useState("");
   const [businessEmail, setBusinessEmail] = useState("");
   const [bvn, setBvn] = useState("");
@@ -320,6 +322,7 @@ export default function CorporateRegistrationScreen({
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-[#F3F5F7]"
+      style={{ paddingBottom: insets.bottom }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView

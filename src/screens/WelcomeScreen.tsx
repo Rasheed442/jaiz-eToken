@@ -6,7 +6,10 @@ import Animated, {
   useSharedValue,
   withTiming
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets
+} from "react-native-safe-area-context";
 
 type AccountType = "Personal" | "Corporate";
 
@@ -21,6 +24,7 @@ export default function WelcomeScreen({
 }) {
   const [accountType, setAccountType] = useState<AccountType>("Personal");
   const [segmentWidth, setSegmentWidth] = useState(0);
+  const insets = useSafeAreaInsets();
   const sliderX = useSharedValue(0);
 
   const selectedIndex = accountOptions.indexOf(accountType);
@@ -48,12 +52,12 @@ export default function WelcomeScreen({
 
       <SafeAreaView className="flex-1 pt-6">
         <View className="w-full px-8 pt-16">
-          <View className="flex-row items-center">
+          <View className="">
             <Image
               source={require("../../assets/images/jaizlogo2.png")}
               accessibilityLabel="Jaiz eToken"
               resizeMode="contain"
-              className="h-14 w-36"
+              className="w-24"
             />
           </View>
 
@@ -72,7 +76,10 @@ export default function WelcomeScreen({
         </View>
       </SafeAreaView>
 
-      <View className="mt-48 w-full flex-1 rounded-t-[30px] bg-[#F3F5F7] px-5 py-0">
+      <View
+        className="mt-48 w-full flex-1 rounded-t-[30px] bg-[#F3F5F7] px-5 py-0"
+        style={{ paddingBottom: insets.bottom }}
+      >
         <View className="mb-5 mt-8 h-1.5 w-16 self-start rounded-full bg-[#D5D9E0]" />
 
         <Text className="mb-4 text-[15px] pt-2 font-medium text-[#67787F]">

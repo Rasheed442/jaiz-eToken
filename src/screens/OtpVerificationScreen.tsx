@@ -10,6 +10,7 @@ import {
   View
 } from "react-native";
 import Animated, { SlideInLeft } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type OtpVerificationScreenProps = {
   onBack: () => void;
@@ -93,6 +94,7 @@ export default function OtpVerificationScreen({
 }: OtpVerificationScreenProps) {
   const [otpCode, setOtpCode] = useState("");
   const [resendSeconds, setResendSeconds] = useState(56);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (resendSeconds <= 0) return;
@@ -110,6 +112,7 @@ export default function OtpVerificationScreen({
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-[#F3F5F7]"
+      style={{ paddingBottom: insets.bottom }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView

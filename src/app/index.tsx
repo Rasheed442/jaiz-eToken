@@ -93,11 +93,15 @@ export default function HomeScreen() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       const rememberedUsername = await authStorage.getUsername();
+      const rememberedCustomerName = await authStorage.getCustomerName();
       const rememberedAccountNumber = await authStorage.getAccountNumber();
       const authData = await authStorage.getAuthData();
 
       if (rememberedUsername) {
         setUsername(rememberedUsername);
+      }
+      if (rememberedCustomerName) {
+        setCustomerName(rememberedCustomerName);
       }
       if (rememberedAccountNumber) {
         setForgotPasscodeAccountNumber(rememberedAccountNumber);
@@ -312,7 +316,9 @@ export default function HomeScreen() {
       return (
         <LoginScreen
           username={username}
+          customerName={customerName}
           onUsernameChange={setUsername}
+          onCustomerNameChange={setCustomerName}
           onLogin={async () => {
             // Load stored auth data after successful login
             const authData = await authStorage.getAuthData();
