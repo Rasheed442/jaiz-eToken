@@ -3,6 +3,7 @@ import { authStorage } from "@/lib/auth/storage";
 import * as Application from "expo-application";
 import * as Clipboard from "expo-clipboard";
 import * as Crypto from "expo-crypto";
+import * as Device from "expo-device";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   AlertCircle,
@@ -56,8 +57,8 @@ async function generateRandomSixDigitCode() {
 export default function HomeScreen({
   fullName,
   cifLast4,
-  deviceName = "iPhone 14 Pro",
-  deviceLocation = "Lagos",
+  deviceName = Device.modelName || Device.deviceName || "This device",
+  deviceLocation,
   onManageDevice,
   onNotificationsPress,
   onLogout,

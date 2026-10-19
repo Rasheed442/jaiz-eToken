@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { View } from "react-native";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { AppState, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -24,7 +24,10 @@ import RegisterDeviceScreen from "@/screens/RegisterDeviceScreen";
 import SubmittedForReviewScreen from "@/screens/SubmittedForReviewScreen";
 import VerificationDocumentScreen from "@/screens/VerificationDocumentScreen";
 import WelcomeScreen from "@/screens/WelcomeScreen";
+import { registrationApi } from "@/lib/api";
 import { authStorage } from "../lib/auth/storage";
+
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 
 type Screen =
   | "welcome"
@@ -88,6 +91,90 @@ export default function HomeScreen() {
   const [forgotPasscodeUsername, setForgotPasscodeUsername] = useState("");
   const [forgotPasscodeAccountNumber, setForgotPasscodeAccountNumber] =
     useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const lastActivityAt = useRef(Date.now());
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTimingOut = useRef(false);
+
+  const handleInactivityLogout = useCallback(async () => {
+    if (isTimingOut.current) return;
+    isTimingOut.current = true;
+
+    try {
+      const rememberedUsername = await authStorage.getUsername();
+      if (rememberedUsername) {
+        void registrationApi
+          .logout({ username: rememberedUsername })
+          .catch((error) => {
+            console.error("Session timeout logout error:", error);
+          });
+      }
+    } catch (error) {
+      console.error("Session timeout logout error:", error);
+    } finally {
+      try {
+        await authStorage.clearAuthSession();
+      } catch (error) {
+        console.error("Could not clear the timed-out session:", error);
+      }
+      setIsAuthenticated(false);
+      setTransitionDirection("backward");
+      setScreen("login");
+      isTimingOut.current = false;
+    }
+  }, []);
+
+  const armInactivityTimer = useCallback(
+    (delay = INACTIVITY_TIMEOUT_MS) => {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = setTimeout(() => {
+        void handleInactivityLogout();
+      }, delay);
+    },
+    [handleInactivityLogout]
+  );
+
+  const recordActivity = useCallback(() => {
+    if (!isAuthenticated || isTimingOut.current) return;
+
+    const inactiveFor = Date.now() - lastActivityAt.current;
+    if (inactiveFor >= INACTIVITY_TIMEOUT_MS) {
+      void handleInactivityLogout();
+      return;
+    }
+
+    lastActivityAt.current = Date.now();
+    armInactivityTimer();
+  }, [armInactivityTimer, handleInactivityLogout, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = null;
+      return;
+    }
+
+    lastActivityAt.current = Date.now();
+    armInactivityTimer();
+
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+
+      const remaining =
+        INACTIVITY_TIMEOUT_MS - (Date.now() - lastActivityAt.current);
+      if (remaining <= 0) {
+        void handleInactivityLogout();
+      } else {
+        armInactivityTimer(remaining);
+      }
+    });
+
+    return () => {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = null;
+      appStateSubscription.remove();
+    };
+  }, [armInactivityTimer, handleInactivityLogout, isAuthenticated]);
 
   // Check if user has already registered and determine where to go
   useEffect(() => {
@@ -109,6 +196,7 @@ export default function HomeScreen() {
 
       // If user has auth data (tokens), they're logged in - go to home
       if (authData) {
+        setIsAuthenticated(true);
         setCustomerName(authData.customerName);
         setNextScreen("home");
       }
@@ -298,6 +386,7 @@ export default function HomeScreen() {
               // Load stored auth data
               const authData = await authStorage.getAuthData();
               if (authData) {
+                setIsAuthenticated(true);
                 setUsername(authData.username);
                 setCustomerName(authData.customerName);
                 setTransitionDirection("forward");
@@ -323,6 +412,7 @@ export default function HomeScreen() {
             // Load stored auth data after successful login
             const authData = await authStorage.getAuthData();
             if (authData) {
+              setIsAuthenticated(true);
               setCustomerName(authData.customerName);
               setTransitionDirection("forward");
               setScreen("home");
@@ -376,6 +466,7 @@ export default function HomeScreen() {
           onLogout={async () => {
             // Clear auth session but keep username remembered
             await authStorage.clearAuthSession();
+            setIsAuthenticated(false);
             setTransitionDirection("backward");
             setScreen("login");
           }}
@@ -477,8 +568,14 @@ export default function HomeScreen() {
   };
 
   return (
-    <AnimatedScreen key={screen} direction={transitionDirection}>
-      {renderScreen()}
-    </AnimatedScreen>
+    <View
+      className="flex-1"
+      onTouchStart={recordActivity}
+      onTouchMove={recordActivity}
+    >
+      <AnimatedScreen key={screen} direction={transitionDirection}>
+        {renderScreen()}
+      </AnimatedScreen>
+    </View>
   );
 }

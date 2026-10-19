@@ -12,6 +12,7 @@ import {
   View
 } from "react-native";
 import Animated, { SlideInLeft } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
 
 type PersonalRegistrationScreenProps = {
@@ -476,10 +477,11 @@ export default function PersonalRegistrationScreen({
       : "Resend code";
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-[#F3F5F7]"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <SafeAreaView className="flex-1 bg-[#F3F5F7]" edges={["bottom"]}>
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       {toast && (
         <>
           {console.log("Rendering toast:", toast)}
@@ -730,6 +732,7 @@ export default function PersonalRegistrationScreen({
           </Animated.View>
         )}
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

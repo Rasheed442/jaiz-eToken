@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "jaiz",
+    "name": "Jaiz eToken",
     "slug": "jaiz",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -23,11 +23,10 @@
     "android": {
       "allowBackup": false,
       "softwareKeyboardLayoutMode": "pan",
+      "icon": "./assets/images/jaiz-favicon-logo.jpeg",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/jaiz-favicon-logo.jpeg"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -39,7 +38,8 @@
     "web": {
       "output": "static",
       "bundler": "metro",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/jaiz-favicon-logo.jpeg",
+      "name": "Jaiz eToken"
     },
     "plugins": [
       "expo-router",
