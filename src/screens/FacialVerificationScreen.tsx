@@ -64,6 +64,15 @@ const PENDING_LIVELINESS_STATUSES = new Set([
   "SUBMITTED",
   "UNDER_REVIEW"
 ]);
+
+function getErrorCode(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+
+  const error = value as Record<string, unknown>;
+  if (typeof error.errorCode === "string") return error.errorCode;
+  return getErrorCode(error.data);
+}
+
 export default function FacialVerificationScreen({
   onBack,
   onVerificationComplete,
@@ -85,13 +94,14 @@ export default function FacialVerificationScreen({
   const isConfirmingRef = useRef(false);
   const isMountedRef = useRef(true);
   const completedRef = useRef(false);
+  const { MetaMapRNSdk } = NativeModules;
 
-  const prepareLiveliness = useCallback(async () => {
+  const prepareLiveliness = useCallback(async (): Promise<StartLivelinessData | null> => {
     if (!accountNumber || !registrationToken) {
       setErrorMessage(
         "Registration details are missing. Go back and try again."
       );
-      return;
+      return null;
     }
 
     setIsPreparing(true);
@@ -110,12 +120,14 @@ export default function FacialVerificationScreen({
       }
 
       setLiveliness(response.data);
+      return response.data;
     } catch (error) {
       setErrorMessage(
         error instanceof Error
           ? error.message
           : "Could not prepare MetaMap verification."
       );
+      return null;
     } finally {
       setIsPreparing(false);
     }
@@ -131,6 +143,83 @@ export default function FacialVerificationScreen({
       isMountedRef.current = false;
     };
   }, []);
+
+  const launchVerificationFlow = useCallback(
+    (verificationData: StartLivelinessData) => {
+      if (!MetaMapRNSdk) {
+        throw new Error(
+          "MetaMap is unavailable in this app build. Create a new native development or preview build."
+        );
+      }
+
+      const clientId =
+        verificationData.clientId ||
+        verificationData.metadata?.clientId ||
+        METAMAP_CLIENT_ID;
+      const flowId =
+        verificationData.flowId || verificationData.metadata?.flowId;
+      const userPhotoLink =
+        verificationData.userPhotoLink ||
+        verificationData.metadata?.userPhotoLink;
+      const userPhotoHash =
+        verificationData.userPhotoHash ||
+        verificationData.metadata?.userPhotoHash ||
+        verificationData.metadata?.userPhotoLinkHash;
+      const internalVerificationRef =
+        verificationData.metadata?.internalVerificationRef ||
+        verificationData.verificationReference;
+
+      if (
+        !clientId ||
+        !flowId ||
+        !userPhotoLink ||
+        !userPhotoHash ||
+        !internalVerificationRef
+      ) {
+        throw new Error(
+          "The liveliness start response is missing MetaMap verification details."
+        );
+      }
+
+      setLiveliness(verificationData);
+      setIsFlowOpen(true);
+      setConfirmationMessage(null);
+      const metadata = {
+        ...verificationData.metadata,
+        internalVerificationRef,
+        userPhotoLink,
+        userPhotoLinkHash: userPhotoHash
+      };
+
+      MetaMapRNSdk.showFlow(clientId, flowId, metadata);
+    },
+    [MetaMapRNSdk]
+  );
+
+  const restartLiveliness = useCallback(async () => {
+    setIsAwaitingConfirmation(false);
+    setConfirmationMessage("Restarting verification...");
+
+    const verificationData = await prepareLiveliness();
+    if (!verificationData || !isMountedRef.current) return;
+
+    setIsStarting(true);
+    setErrorMessage(null);
+    completedRef.current = false;
+    try {
+      launchVerificationFlow(verificationData);
+    } catch (error) {
+      setIsFlowOpen(false);
+      setConfirmationMessage(null);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not restart MetaMap verification."
+      );
+    } finally {
+      setIsStarting(false);
+    }
+  }, [launchVerificationFlow, prepareLiveliness]);
 
   const confirmWithBackend = useCallback(async () => {
     if (isConfirmingRef.current || completedRef.current) return;
@@ -170,6 +259,13 @@ export default function FacialVerificationScreen({
             : "";
 
           if (!response.success) {
+            if (response.errorCode === "LIVELINESS_NOT_STARTED") {
+              if (isMountedRef.current) {
+                await restartLiveliness();
+              }
+              return;
+            }
+
             if (isMountedRef.current) {
               setErrorMessage(response.message || "Liveliness verification failed.");
               setConfirmationMessage(null);
@@ -191,10 +287,19 @@ export default function FacialVerificationScreen({
           onVerificationComplete();
           return;
         } catch (error) {
+          if (getErrorCode(error) === "LIVELINESS_NOT_STARTED") {
+            if (isMountedRef.current) {
+              await restartLiveliness();
+            }
+            return;
+          }
+
           if (isMountedRef.current) {
             setErrorMessage(
               error instanceof Error
                 ? error.message
+                : error && typeof error === "object" && "message" in error && typeof error.message === "string"
+                  ? error.message
                 : "Verification is still processing."
             );
           }
@@ -210,9 +315,7 @@ export default function FacialVerificationScreen({
       isConfirmingRef.current = false;
       if (isMountedRef.current) setIsConfirming(false);
     }
-  }, [accountNumber, onVerificationComplete, registrationToken]);
-
-  const { MetaMapRNSdk } = NativeModules;
+  }, [accountNumber, onVerificationComplete, registrationToken, restartLiveliness]);
 
   useEffect(() => {
     // const metaMapModule = NativeModules.MetaMapRNSdk;
@@ -281,46 +384,7 @@ export default function FacialVerificationScreen({
     completedRef.current = false;
 
     try {
-      const verificationData = liveliness;
-      const clientId =
-        verificationData.clientId ||
-        verificationData.metadata?.clientId ||
-        METAMAP_CLIENT_ID;
-      const flowId =
-        verificationData.flowId || verificationData.metadata?.flowId;
-      const userPhotoLink =
-        verificationData.userPhotoLink ||
-        verificationData.metadata?.userPhotoLink;
-      const userPhotoHash =
-        verificationData.userPhotoHash ||
-        verificationData.metadata?.userPhotoHash ||
-        verificationData.metadata?.userPhotoLinkHash;
-      const internalVerificationRef =
-        verificationData.metadata?.internalVerificationRef ||
-        verificationData.verificationReference;
-      if (
-        !clientId ||
-        !flowId ||
-        !userPhotoLink ||
-        !userPhotoHash ||
-        !internalVerificationRef
-      ) {
-        throw new Error(
-          "The liveliness start response is missing MetaMap verification details."
-        );
-      }
-
-      setLiveliness(verificationData);
-      setIsFlowOpen(true);
-      const metadata = {
-        ...verificationData.metadata,
-        internalVerificationRef,
-        userPhotoLink,
-        userPhotoLinkHash: userPhotoHash
-      };
-
-      console.log("🚀 ~ handleStartVerification ~ metadata:", clientId, flowId, metadata);
-      MetaMapRNSdk.showFlow(clientId, flowId, metadata);
+      launchVerificationFlow(liveliness);
     } catch (error) {
       setIsFlowOpen(false);
       setErrorMessage(

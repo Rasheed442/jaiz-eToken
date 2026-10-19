@@ -25,12 +25,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
 import { authStorage } from "../lib/auth/storage";
-import EtokenActivatedScreen from "./EtokenActivatedScreen";
 
 type CreateProfileScreenProps = {
   onBack: () => void;
   onProfileCreated: () => void;
-  onGoToDashboard: () => void;
   accountNumber: string;
   phoneNumber: string;
   progress?: number; // 0-1, for the top progress bar
@@ -135,7 +133,6 @@ function StepPill({ text }: { text: string }) {
 export default function CreateProfileScreen({
   onBack,
   onProfileCreated,
-  onGoToDashboard,
   accountNumber,
   phoneNumber,
   progress = 0.8
@@ -151,10 +148,6 @@ export default function CreateProfileScreen({
   const [showAnswers, setShowAnswers] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [activationMessage, setActivationMessage] = useState<string | null>(
-    null
-  );
-  const [showActivationScreen, setShowActivationScreen] = useState(false);
 
   const answerRefs = useRef<(TextInput | null)[]>([]);
   const transitioningRef = useRef(false);
@@ -352,26 +345,21 @@ export default function CreateProfileScreen({
         activationResponse?.success ?? ""
       );
 
-      if (activationResponse?.success && activationResponse?.data) {
-        // Store authentication data
-        await authStorage.setAuthData({
-          accessToken: activationResponse.data.accessToken,
-          refreshToken: activationResponse.data.refreshToken,
-          username: activationResponse.data.username,
-          customerName: activationResponse.data.customerName,
-          accountNumber,
-          passcode,
-          deviceId
-        });
-
-        setActivationMessage(activationResponse.message);
-        setShowActivationScreen(true);
-
-        // Auto-redirect to dashboard after showing activation screen
-        setTimeout(() => {
-          onGoToDashboard();
-        }, 2500);
+      if (!activationResponse?.success || !activationResponse.data) {
+        setError(activationResponse?.message || "Failed to activate eToken.");
+        return;
       }
+
+      // Store authentication data before moving to the activation screen.
+      await authStorage.setAuthData({
+        accessToken: activationResponse.data.accessToken,
+        refreshToken: activationResponse.data.refreshToken,
+        username: activationResponse.data.username,
+        customerName: activationResponse.data.customerName,
+        accountNumber,
+        passcode,
+        deviceId
+      });
 
       onProfileCreated();
     } catch (err: any) {
@@ -387,16 +375,6 @@ export default function CreateProfileScreen({
     ["4", "5", "6"],
     ["7", "8", "9"]
   ];
-
-  // Show activation screen if activation was successful
-  if (showActivationScreen) {
-    return (
-      <EtokenActivatedScreen
-        onGoToDashboard={onGoToDashboard}
-        deviceLabel={Device.modelName || "This device"}
-      />
-    );
-  }
 
   return (
     <SafeAreaView className="flex-1 bg-[#F3F5F7]">

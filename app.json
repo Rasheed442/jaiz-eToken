@@ -46,9 +46,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#193F7F",
+          "image": "./assets/images/jaizlogo.png",
+          "imageWidth": 100
         }
       ],
       "expo-asset",

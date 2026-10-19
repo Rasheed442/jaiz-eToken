@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AppState, View } from "react-native";
+import * as Device from "expo-device";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -17,6 +18,7 @@ import DeviceRegisteredScreen from "@/screens/DeviceregisteredScreen";
 import FacialVerificationScreen from "@/screens/FacialVerificationScreen";
 import ForgotPasscodeScreen from "@/screens/ForgotPasscodeScreen";
 import DashboardScreen from "@/screens/HomeScreen";
+import EtokenActivatedScreen from "@/screens/EtokenActivatedScreen";
 import LoginScreen from "@/screens/LoginScreen";
 import OtpVerificationScreen from "@/screens/OtpVerificationScreen";
 import PersonalRegistrationScreen from "@/screens/PersonalRegistrationScreen";
@@ -146,6 +148,17 @@ export default function HomeScreen() {
     lastActivityAt.current = Date.now();
     armInactivityTimer();
   }, [armInactivityTimer, handleInactivityLogout, isAuthenticated]);
+
+  const handleGoToDashboard = useCallback(async () => {
+    const authData = await authStorage.getAuthData();
+    if (!authData) return;
+
+    setIsAuthenticated(true);
+    setUsername(authData.username);
+    setCustomerName(authData.customerName);
+    setTransitionDirection("forward");
+    setScreen("home");
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -379,25 +392,24 @@ export default function HomeScreen() {
               setScreen("facial-verification");
             }}
             onProfileCreated={() => {
+              setIsAuthenticated(true);
               setTransitionDirection("forward");
               setScreen("etoken-activated");
-            }}
-            onGoToDashboard={async () => {
-              // Load stored auth data
-              const authData = await authStorage.getAuthData();
-              if (authData) {
-                setIsAuthenticated(true);
-                setUsername(authData.username);
-                setCustomerName(authData.customerName);
-                setTransitionDirection("forward");
-                setScreen("home");
-              }
             }}
             accountNumber={accountNumber || ""}
             phoneNumber={phoneNumber}
             progress={0.8}
           />
         </View>
+      );
+    }
+
+    if (screen === "etoken-activated") {
+      return (
+        <EtokenActivatedScreen
+          deviceLabel={Device.modelName || "This device"}
+          onGoToDashboard={handleGoToDashboard}
+        />
       );
     }
 

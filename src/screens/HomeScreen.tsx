@@ -334,7 +334,7 @@ export default function HomeScreen({
         </View>
 
         {/* OTP Card */}
-        <View className="relative mt-6 h-[236px] overflow-hidden rounded-2xl bg-[#214788] px-5 pb-8 pt-5">
+        <View className="relative mt-6 overflow-hidden rounded-2xl bg-[#214788] px-5 pb-5 pt-5">
           <LinearGradient
             colors={["#132C58", "#1D3F7C", "#928e54"]}
             start={{ x: 0, y: 1 }}
@@ -394,7 +394,7 @@ export default function HomeScreen({
             />
           </View>
 
-          <Text className="mt-3 text-[13px] font-outfit text-white">
+          <Text className="py-4 text-[13px] font-outfit text-white">
             Expires in {timeLabel}
           </Text>
         </View>

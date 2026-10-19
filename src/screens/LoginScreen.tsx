@@ -1,12 +1,9 @@
 import * as Application from "expo-application";
+import LoadingOverlay from "@/components/LoadingOverlay";
 import { LinearGradient } from "expo-linear-gradient";
 import { Delete } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -117,157 +114,6 @@ function KeypadButton({
   );
 }
 
-/* ---------- Full-screen loading overlay ---------- */
-
-function LoadingOverlay({
-  visible,
-  message
-}: {
-  visible: boolean;
-  message: string;
-}) {
-  const enter = useRef(new Animated.Value(0)).current;
-  const dots = useMemo(() => [0, 1, 2].map(() => new Animated.Value(0)), []);
-
-  useEffect(() => {
-    if (!visible) {
-      enter.setValue(0);
-      return;
-    }
-    Animated.timing(enter, {
-      toValue: 1,
-      duration: 450,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true
-    }).start();
-  }, [visible, enter]);
-
-  useEffect(() => {
-    if (!visible) return;
-    const loops = dots.map((dot, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 160),
-          Animated.timing(dot, {
-            toValue: 1,
-            duration: 350,
-            useNativeDriver: true
-          }),
-          Animated.timing(dot, {
-            toValue: 0,
-            duration: 350,
-            useNativeDriver: true
-          }),
-          Animated.delay((2 - i) * 160)
-        ])
-      )
-    );
-    loops.forEach((l) => l.start());
-    return () => {
-      loops.forEach((l) => l.stop());
-      dots.forEach((d) => d.setValue(0));
-    };
-  }, [visible, dots]);
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={() => {}}
-    >
-      <SafeAreaView className="flex-1 bg-[#F8C300]">
-        <View className="flex-1 items-center justify-center px-8">
-          <Animated.View
-            style={{
-              opacity: enter,
-              transform: [
-                {
-                  scale: enter.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.85, 1]
-                  })
-                }
-              ],
-              shadowColor: "#193F7F",
-              shadowOpacity: 0.18,
-              shadowRadius: 16,
-              shadowOffset: { width: 0, height: 8 },
-              elevation: 8
-            }}
-            className="h-24 w-24 items-center justify-center rounded-3xl bg-white"
-          >
-            <Text className="text-[40px] font-outfit-bold text-[#193F7F]">
-              J
-            </Text>
-          </Animated.View>
-
-          <Animated.View
-            style={{
-              opacity: enter,
-              transform: [
-                {
-                  translateY: enter.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [16, 0]
-                  })
-                }
-              ]
-            }}
-            className="mt-6 items-center"
-          >
-            <Text className="text-center text-[30px] tracking-wide text-[#193F7F]">
-              <Text className="font-outfit-bold">JAIZ</Text>
-              <Text className="font-outfit-medium"> eToken</Text>
-            </Text>
-          </Animated.View>
-
-          <Animated.View
-            style={{ opacity: enter }}
-            className="mt-10 items-center"
-          >
-            <View className="flex-row items-center gap-2">
-              {dots.map((dot, i) => (
-                <Animated.View
-                  key={i}
-                  style={{
-                    opacity: dot.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.3, 1]
-                    }),
-                    transform: [
-                      {
-                        scale: dot.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.8, 1.15]
-                        })
-                      }
-                    ]
-                  }}
-                  className="h-2.5 w-2.5 rounded-full bg-[#193F7F]"
-                />
-              ))}
-            </View>
-            <Text className="mt-4 text-[16px] font-outfit-medium text-[#193F7F]">
-              {message}
-            </Text>
-          </Animated.View>
-        </View>
-
-        <Animated.View
-          style={{ opacity: enter }}
-          className="items-center px-8 pb-6"
-        >
-          <Text className="text-[13px] font-outfit text-[#193F7F]/70">
-            Securing your session
-          </Text>
-        </Animated.View>
-      </SafeAreaView>
-    </Modal>
-  );
-}
-
 /* ---------- Screen ---------- */
 
 export default function LoginScreen({
@@ -283,7 +129,6 @@ export default function LoginScreen({
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showLoader, setShowLoader] = useState(false);
   const [Checkusername, seChecktUsername] = useState("");
 
   useEffect(() => {
@@ -326,7 +171,6 @@ export default function LoginScreen({
     }
 
     setIsLoading(true);
-    setShowLoader(true);
     setError(null);
 
     try {
@@ -371,13 +215,11 @@ export default function LoginScreen({
         // Call onLogin callback to navigate to dashboard
         onLogin();
       } else {
-        setShowLoader(false);
         setError(getLoginFailureMessage(response));
         setPasscode("");
       }
     } catch (err: any) {
       console.error("Login failed:", err?.message ?? err);
-      setShowLoader(false);
       setError(getLoginFailureMessage(err?.data ?? err));
       setPasscode("");
     } finally {
@@ -458,12 +300,6 @@ export default function LoginScreen({
           </Text>
         )}
 
-        {isLoading && (
-          <View className="mt-3 items-center">
-            <ActivityIndicator size="small" color="#123E7C" />
-          </View>
-        )}
-
         <View className="mt-6 rounded-3xl bg-[#ECEDEE] px-4 pb-4 pt-2">
           {keypadRows.map((row, i) => (
             <View key={i} className="flex-row">
@@ -519,8 +355,7 @@ export default function LoginScreen({
         ) : null} */}
       </ScrollView>
 
-      {/* Full-screen loading overlay */}
-      <LoadingOverlay visible={showLoader} message="Logging in..." />
+      <LoadingOverlay visible={isLoading} />
     </SafeAreaView>
   );
 }

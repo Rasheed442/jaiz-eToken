@@ -9,10 +9,9 @@ import {
 import "@fontsource/orelega-one";
 import { DarkTheme, DefaultTheme, Slot, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
 import { useColorScheme, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-
-import { AnimatedSplashOverlay } from "@/components/animated-icon";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,6 +24,12 @@ export default function RootLayout() {
     Outfit_700Bold
   });
 
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
   if (!fontsLoaded && !fontError) {
     return <View style={{ flex: 1, backgroundColor: "#193F7F" }} />;
   }
@@ -32,7 +37,6 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
         <Slot />
       </ThemeProvider>
     </SafeAreaProvider>
