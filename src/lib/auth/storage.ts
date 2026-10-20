@@ -13,6 +13,7 @@ const CUSTOMER_NAME_KEY = 'jaiz_customer_name';
 const ACCOUNT_NUMBER_KEY = 'jaiz_account_number';
 const PASSCODE_KEY = 'jaiz_passcode';
 const DEVICE_ID_KEY = 'jaiz_device_id';
+const BIOMETRIC_ENABLED_KEY = 'jaiz_biometric_enabled';
 
 export interface AuthData {
   accessToken: string;
@@ -119,6 +120,15 @@ export const authStorage = {
     }
   },
 
+  async clearPasscode(): Promise<void> {
+    try {
+      await SecureStore.deleteItemAsync(PASSCODE_KEY);
+    } catch (error) {
+      console.error('Error clearing passcode:', error);
+      throw error;
+    }
+  },
+
   /**
    * Get device ID
    */
@@ -128,6 +138,28 @@ export const authStorage = {
     } catch (error) {
       console.error('Error getting device ID:', error);
       return null;
+    }
+  },
+
+  async getBiometricEnabled(): Promise<boolean> {
+    try {
+      return (await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY)) === 'true';
+    } catch (error) {
+      console.error('Error getting biometric preference:', error);
+      return false;
+    }
+  },
+
+  async setBiometricEnabled(enabled: boolean): Promise<void> {
+    try {
+      if (enabled) {
+        await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
+      } else {
+        await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
+      }
+    } catch (error) {
+      console.error('Error saving biometric preference:', error);
+      throw error;
     }
   },
 
@@ -172,7 +204,9 @@ export const authStorage = {
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
       await SecureStore.deleteItemAsync(ACCOUNT_NUMBER_KEY);
-      await SecureStore.deleteItemAsync(PASSCODE_KEY);
+      if (!(await this.getBiometricEnabled())) {
+        await SecureStore.deleteItemAsync(PASSCODE_KEY);
+      }
       await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
       // Keep USERNAME_KEY for convenience
     } catch (error) {
@@ -193,6 +227,7 @@ export const authStorage = {
       await SecureStore.deleteItemAsync(ACCOUNT_NUMBER_KEY);
       await SecureStore.deleteItemAsync(PASSCODE_KEY);
       await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
+      await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
     } catch (error) {
       console.error('Error clearing all data:', error);
       throw error;

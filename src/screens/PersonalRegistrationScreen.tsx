@@ -78,23 +78,11 @@ function maskPhoneNumber(value: string) {
     []
   );
 
-  digitIndexes.slice(-3).forEach((index) => {
+  digitIndexes.slice(0, -4).forEach((index) => {
     characters[index] = "*";
   });
 
   return characters.join("");
-}
-
-function maskEmail(value: string) {
-  const separatorIndex = value.lastIndexOf("@");
-  if (separatorIndex <= 0) return value;
-
-  const localPart = value.slice(0, separatorIndex);
-  const domain = value.slice(separatorIndex);
-  if (localPart.length === 1) return `*${domain}`;
-  if (localPart.length === 2) return `${localPart[0]}*${domain}`;
-
-  return `${localPart[0]}${"*".repeat(localPart.length - 2)}${localPart[localPart.length - 1]}${domain}`;
 }
 
 function Toast({
@@ -684,11 +672,7 @@ export default function PersonalRegistrationScreen({
                 .filter(([, value]) => Boolean(value))
                 .map(([label, value]) => {
                   const displayValue =
-                    label === "Phone Number"
-                      ? maskPhoneNumber(value)
-                      : label === "Email"
-                        ? maskEmail(value)
-                        : value;
+                    label === "Phone Number" ? maskPhoneNumber(value) : value;
 
                   return (
                     <View

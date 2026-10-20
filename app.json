@@ -10,6 +10,7 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
+        "NSFaceIDUsageDescription": "Allow Jaiz eToken to use Face ID to securely sign you in.",
         "NSCameraUsageDescription": "This app needs camera access to verify your identity for secure transactions.",
         "NSMicrophoneUsageDescription": "MetaMap may use the microphone during identity verification.",
         "NSPhotoLibraryUsageDescription": "MetaMap may use your photo library when an identity verification step requires it.",
@@ -55,6 +56,12 @@
       "@react-native-community/datetimepicker",
       "expo-image",
       "expo-web-browser",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Jaiz eToken to use Face ID to securely sign you in."
+        }
+      ],
       "react-native-metamap-sdk/plugin/build",
       "./plugins/withMetaMapAndroidSdkPin"
     ],

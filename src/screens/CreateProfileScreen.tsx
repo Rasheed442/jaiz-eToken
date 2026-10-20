@@ -2,6 +2,7 @@ import * as Application from "expo-application";
 import * as Device from "expo-device";
 import {
   Check,
+  ChevronDown,
   ChevronLeft,
   Delete,
   Eye,
@@ -14,6 +15,7 @@ import {
   Animated,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -37,11 +39,17 @@ type CreateProfileScreenProps = {
 const PASSCODE_LENGTH = 6;
 const MIN_ANSWER_LENGTH = 2;
 
-// Same questions as before, so the payload the API receives is unchanged.
 const SECURITY_QUESTIONS = [
   "What was the name of your first school?",
-  "What is your mother's maiden name?",
-  "In what city were you born?"
+  "What is your mother’s maiden name?",
+  "In what city were you born?",
+  "What was the make of your first car?",
+  "What was the first name of your childhood best friend?",
+  "What was the name of your first pet?",
+  "What was the surname of your favourite teacher at school?",
+  "What was the name of the street where you lived as a child?",
+  "What was your childhood nickname?",
+  "What was the name of the first organisation you worked for?"
 ];
 
 type Step = 1 | 2 | 3; // 1: enter passcode, 2: confirm passcode, 3: security questions
@@ -139,15 +147,19 @@ export default function CreateProfileScreen({
 }: CreateProfileScreenProps) {
   const [passcode, setPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
-  const [securityAnswers, setSecurityAnswers] = useState<string[]>(
-    SECURITY_QUESTIONS.map(() => "")
-  );
+  const [selectedQuestions, setSelectedQuestions] = useState<(string | null)[]>([
+    null,
+    null,
+    null
+  ]);
+  const [securityAnswers, setSecurityAnswers] = useState<string[]>(["", "", ""]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [showAnswers, setShowAnswers] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number | null>(null);
 
   const answerRefs = useRef<(TextInput | null)[]>([]);
   const transitioningRef = useRef(false);
@@ -253,15 +265,14 @@ export default function CreateProfileScreen({
     setError(null);
   };
 
-  const answerErrors = securityAnswers.map((answer) => {
+  const answerErrors = securityAnswers.map((answer, index) => {
+    if (!selectedQuestions[index]) return "Please select a security question";
     const trimmed = answer.trim();
     if (!trimmed) return "Please answer this question";
     if (trimmed.length < MIN_ANSWER_LENGTH) return "Answer is too short";
     return null;
   });
-  const answeredCount = securityAnswers.filter(
-    (a) => a.trim().length >= MIN_ANSWER_LENGTH
-  ).length;
+  const answeredCount = answerErrors.filter((answerError) => !answerError).length;
 
   const validateForm = (): boolean => {
     if (!phoneNumber.trim()) {
@@ -276,8 +287,16 @@ export default function CreateProfileScreen({
       setError("Passcodes do not match");
       return false;
     }
+    if (selectedQuestions.some((question) => !question)) {
+      setError("Please select three security questions");
+      return false;
+    }
+    if (new Set(selectedQuestions).size !== 3) {
+      setError("Choose a different question for each selection");
+      return false;
+    }
     if (answerErrors.some(Boolean)) {
-      setError("Please answer all security questions");
+      setError("Please answer all three security questions");
       return false;
     }
     return true;
@@ -293,8 +312,8 @@ export default function CreateProfileScreen({
     setError(null);
 
     try {
-      const securityQuestions = SECURITY_QUESTIONS.map((question, index) => ({
-        question,
+      const securityQuestions = selectedQuestions.map((question, index) => ({
+        question: question ?? "",
         answer: securityAnswers[index].trim()
       }));
 
@@ -492,14 +511,14 @@ export default function CreateProfileScreen({
                   Security questions
                 </Text>
                 <Text className="mt-2 text-[15px] font-outfit leading-[22px] text-[#67787F]">
-                  Answer these three questions. Pick answers only you would
-                  know.
+                  Choose three different questions and provide answers that
+                  you can remember.
                 </Text>
 
                 {/* Answered counter + show/hide toggle */}
                 <View className="mt-5 flex-row items-center justify-between">
                   <Text className="text-[13px] font-outfit-medium text-[#67787F]">
-                    {answeredCount} of {SECURITY_QUESTIONS.length} answered
+                    {answeredCount} of 3 answered
                   </Text>
                   <Pressable
                     accessibilityRole="button"
@@ -520,16 +539,17 @@ export default function CreateProfileScreen({
                   </Pressable>
                 </View>
 
-                {/* Question cards */}
-                {SECURITY_QUESTIONS.map((question, index) => {
+                {/* Three question selectors and their answers */}
+                {[0, 1, 2].map((index) => {
+                  const question = selectedQuestions[index];
                   const isDone = !answerErrors[index];
                   const isFocused = focusedIndex === index;
                   const showFieldError = submitted && !!answerErrors[index];
-                  const isLast = index === SECURITY_QUESTIONS.length - 1;
+                  const isLast = index === 2;
 
                   return (
                     <View
-                      key={question}
+                      key={index}
                       className={`mt-4 rounded-2xl border bg-white p-4 ${
                         isFocused
                           ? "border-[#123E7C]"
@@ -553,39 +573,67 @@ export default function CreateProfileScreen({
                           )}
                         </View>
                         <Text className="ml-3 flex-1 text-[15px] font-outfit-medium leading-[21px] text-[#1B2D4A]">
-                          {question}
+                          Security question {index + 1}
                         </Text>
                       </View>
 
-                      <TextInput
-                        ref={(r) => {
-                          answerRefs.current[index] = r;
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select security question ${index + 1}`}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          setActiveQuestionIndex(index);
                         }}
-                        value={securityAnswers[index]}
-                        onChangeText={(value) =>
-                          handleSecurityAnswerChange(index, value)
-                        }
-                        onFocus={() => setFocusedIndex(index)}
-                        onBlur={() =>
-                          setFocusedIndex((cur) => (cur === index ? null : cur))
-                        }
-                        placeholder="Your answer"
-                        placeholderTextColor="#9AA5B1"
-                        secureTextEntry={!showAnswers}
-                        autoCapitalize="words"
-                        autoCorrect={false}
-                        autoComplete="off"
-                        returnKeyType={isLast ? "done" : "next"}
-                        blurOnSubmit={isLast}
-                        onSubmitEditing={() => {
-                          if (isLast) {
-                            handleCreateProfile();
-                          } else {
-                            answerRefs.current[index + 1]?.focus();
+                        className="mt-4 min-h-14 flex-row items-center justify-between rounded-xl border border-[#D9E1EB] bg-[#F8FAFC] px-4 py-3 active:opacity-70"
+                      >
+                        <Text
+                          className={`mr-3 flex-1 text-[14px] font-outfit leading-[20px] ${
+                            question ? "text-[#1B2D4A]" : "text-[#8793A3]"
+                          }`}
+                        >
+                          {question || "Choose a question"}
+                        </Text>
+                        <ChevronDown size={19} color="#123E7C" />
+                      </Pressable>
+
+                      {question ? (
+                        <TextInput
+                          ref={(r) => {
+                            answerRefs.current[index] = r;
+                          }}
+                          value={securityAnswers[index]}
+                          onChangeText={(value) =>
+                            handleSecurityAnswerChange(index, value)
                           }
-                        }}
-                        className="mt-3 rounded-xl bg-[#F3F5F7] px-4 py-3.5 text-[16px] font-outfit text-[#1B2D4A]"
-                      />
+                          onFocus={() => setFocusedIndex(index)}
+                          onBlur={() =>
+                            setFocusedIndex((cur) => (cur === index ? null : cur))
+                          }
+                          placeholder="Enter your answer"
+                          placeholderTextColor="#9AA5B1"
+                          secureTextEntry={!showAnswers}
+                          autoCapitalize="words"
+                          autoCorrect={false}
+                          autoComplete="off"
+                          returnKeyType={isLast ? "done" : "next"}
+                          blurOnSubmit={isLast}
+                          onSubmitEditing={() => {
+                            if (isLast) {
+                              handleCreateProfile();
+                            } else if (selectedQuestions[index + 1]) {
+                              answerRefs.current[index + 1]?.focus();
+                            } else {
+                              Keyboard.dismiss();
+                              setActiveQuestionIndex(index + 1);
+                            }
+                          }}
+                          className="mt-3 rounded-xl bg-[#F3F5F7] px-4 py-3.5 text-[16px] font-outfit text-[#1B2D4A]"
+                        />
+                      ) : (
+                        <Text className="mt-3 px-1 text-[13px] font-outfit text-[#8793A3]">
+                          Select a question to add your answer.
+                        </Text>
+                      )}
 
                       {showFieldError && (
                         <Text className="mt-2 text-[12px] font-outfit text-[#D32F2F]">
@@ -636,6 +684,84 @@ export default function CreateProfileScreen({
           </KeyboardAvoidingView>
         )}
       </View>
+
+      <Modal
+        visible={activeQuestionIndex !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActiveQuestionIndex(null)}
+      >
+        <View className="flex-1 justify-end bg-black/40">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close question list"
+            className="absolute inset-0"
+            onPress={() => setActiveQuestionIndex(null)}
+          />
+          <View
+            className="rounded-t-[28px] bg-white px-5 pt-5"
+            style={{ maxHeight: "78%", paddingBottom: 28 }}
+          >
+            <View className="mb-4 h-1.5 w-10 self-center rounded-full bg-[#D9E1EB]" />
+            <Text className="text-[20px] font-outfit-semibold text-[#1B2D4A]">
+              Choose a security question
+            </Text>
+            <Text className="mt-1 mb-4 text-[13px] font-outfit text-[#718096]">
+              Each question can only be selected once.
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {activeQuestionIndex !== null &&
+                SECURITY_QUESTIONS.filter(
+                  (question) =>
+                    question === selectedQuestions[activeQuestionIndex] ||
+                    !selectedQuestions.includes(question)
+                ).map((question) => {
+                  const isSelected =
+                    question === selectedQuestions[activeQuestionIndex!];
+
+                  return (
+                    <Pressable
+                      key={question}
+                      accessibilityRole="button"
+                      onPress={() => {
+                        const selectedIndex = activeQuestionIndex;
+                        if (selectedIndex === null) return;
+
+                        setSelectedQuestions((previous) => {
+                          const next = [...previous];
+                          next[selectedIndex] = question;
+                          return next;
+                        });
+                        if (selectedQuestions[selectedIndex] !== question) {
+                          setSecurityAnswers((previous) => {
+                            const next = [...previous];
+                            next[selectedIndex] = "";
+                            return next;
+                          });
+                        }
+                        setError(null);
+                        setActiveQuestionIndex(null);
+                      }}
+                      className={`mb-2 min-h-14 flex-row items-center justify-between rounded-2xl border px-4 py-3 active:opacity-70 ${
+                        isSelected
+                          ? "border-[#123E7C] bg-[#EEF4FC]"
+                          : "border-[#E4E9EF] bg-white"
+                      }`}
+                    >
+                      <Text className="mr-3 flex-1 text-[14px] font-outfit text-[#1B2D4A]">
+                        {question}
+                      </Text>
+                      {isSelected ? (
+                        <Check size={19} color="#123E7C" />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
