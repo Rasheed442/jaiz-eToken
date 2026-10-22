@@ -23,48 +23,6 @@ type AccountType = "Personal" | "Corporate";
 
 const accountOptions: AccountType[] = ["Personal", "Corporate"];
 
-function BackgroundPattern() {
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: 170,
-        overflow: "hidden",
-        opacity: 0.52
-      }}
-    >
-      {Array.from({ length: 8 }).map((_, row) => (
-        <View
-          key={row}
-          style={{
-            flexDirection: "row",
-            marginLeft: row % 2 === 0 ? -10 : -34,
-            marginTop: -2
-          }}
-        >
-          {Array.from({ length: 12 }).map((__, column) => (
-            <View
-              key={`${row}-${column}`}
-              style={{
-                width: 48,
-                height: 24,
-                marginRight: -5,
-                borderRadius: 12,
-                backgroundColor:
-                  (row + column) % 3 === 0 ? "#1F63A1" : "#0C5795"
-              }}
-            />
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}
-
 export default function WelcomeScreen({
   onContinue,
   onLogin
@@ -95,38 +53,30 @@ export default function WelcomeScreen({
 
   const accountDescription =
     accountType === "Personal"
-      ? "Set up in minutes with your account number, BVN and a quick selfie — no branch visit needed."
+      ? "Set up in minutes with your account number and a quick selfie — no branch visit needed."
       : "Set up your business eToken with your account details and an authorised representative.";
 
   return (
     <View className="flex-1 overflow-hidden bg-[#064783]">
-      {/* Oversized brand ring */}
+      {/* Jaiz brand mark */}
       <View
         pointerEvents="none"
         style={{
           position: "absolute",
           top: -122,
           right: -132,
-          width: 350,
-          height: 350,
-          borderRadius: 175,
-          backgroundColor: "#FFB900"
+          width: 380,
+          height: 380
         }}
-      />
-      <View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          top: -72,
-          right: -82,
-          width: 250,
-          height: 250,
-          borderRadius: 125,
-          backgroundColor: "#064783"
-        }}
-      />
+      >
+        <Image
+          source={require("../../assets/images/bgr.png")}
+          resizeMode="cover"
+          style={{ width: "100%", height: "100%" }}
+        />
+      </View>
 
-      {/* Subtle repeating pattern behind the welcome copy */}
+      {/* Background artwork behind the welcome copy */}
       <View
         pointerEvents="none"
         style={{
@@ -134,10 +84,16 @@ export default function WelcomeScreen({
           left: 0,
           right: 0,
           bottom: panelHeight,
-          height: 170
+          height: 80,
+          overflow: "hidden",
+          width: 500
         }}
       >
-        <BackgroundPattern />
+        <Image
+          source={require("../../assets/images/bgpattern.jpeg")}
+          // resizeMode="contain"
+          style={{ width: "100%", height: "100%" }}
+        />
       </View>
 
       <View
@@ -152,10 +108,10 @@ export default function WelcomeScreen({
       >
         <View className="flex-row items-center">
           <Image
-            source={require("../../assets/images/jaizlogo.png")}
+            source={require("../../assets/images/jaiz-favicon-logo.jpeg")}
             accessibilityLabel="Jaiz Bank logo"
-            resizeMode="contain"
-            style={{ width: 28, height: 28 }}
+            resizeMode="cover"
+            style={{ width: 28, height: 28, backgroundColor: "#064783" }}
           />
           <Text className="ml-1.5 text-[18px] font-outfit-semibold text-white">
             jaiz bank
@@ -167,13 +123,13 @@ export default function WelcomeScreen({
         </View>
 
         <View>
-          <Text className="text-[36px] font-outfit-bold leading-[39px] text-white">
-            Your trust,
+          <Text className="text-[36px] font-outfit-bold leading-[42px] text-white">
+            Your <Text className="text-[#FFB900]">financial</Text>
           </Text>
-          <Text className="text-[36px] font-outfit-bold leading-[39px] text-[#FFB900]">
-            safely kept.
+          <Text className="text-[36px] font-outfit-bold leading-[42px] text-white">
+            partner for life
           </Text>
-          <Text className="mt-4 max-w-[350px] text-[15px] font-outfit leading-[24px] text-[#D5E4F5]">
+          <Text className="mt-4 max-w-[370px] text-[16px] font-outfit leading-[24px] text-[#D5E4F5]">
             Approve every Jaiz transaction with a secure code generated on your
             own phone.
           </Text>
@@ -228,7 +184,8 @@ export default function WelcomeScreen({
 
             {accountOptions.map((option) => {
               const isSelected = option === accountType;
-              const Icon = option === "Personal" ? UserRound : BriefcaseBusiness;
+              const Icon =
+                option === "Personal" ? UserRound : BriefcaseBusiness;
 
               return (
                 <Pressable
