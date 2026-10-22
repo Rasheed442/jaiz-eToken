@@ -8,6 +8,7 @@ type Props = {
   onCancel?: () => void;
   /** Disables both actions and shows a spinner on the primary button */
   isLoading?: boolean;
+  errorMessage?: string;
 };
 
 const CONSEQUENCES = [
@@ -38,6 +39,7 @@ export default function DeregisterDeviceScreen({
   onDeregister,
   onCancel,
   isLoading = false,
+  errorMessage,
 }: Props) {
   const insets = useSafeAreaInsets();
 
@@ -80,6 +82,11 @@ export default function DeregisterDeviceScreen({
 
       {/* Actions */}
       <View className="items-center pb-6">
+        {errorMessage ? (
+          <Text className="mb-4 text-center text-[14px] font-medium text-[#C23B40]">
+            {errorMessage}
+          </Text>
+        ) : null}
         <Pressable
           onPress={onDeregister}
           disabled={isLoading}

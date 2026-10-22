@@ -1,4 +1,5 @@
 import { authStorage } from "@/lib/auth/storage";
+import { requireOptionalNativeModule } from "expo-modules-core";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
 import {
@@ -11,6 +12,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  Platform,
   ScrollView,
   Text,
   View
@@ -33,6 +35,36 @@ type StoredDeviceDetails = {
   deviceId: string;
   isActive: boolean;
 };
+
+const BIOMETRIC_FACIAL_RECOGNITION = 2;
+const BIOMETRIC_FINGERPRINT = 1;
+
+function hasLocalAuthenticationNativeModule(): boolean {
+  try {
+    return Boolean(requireOptionalNativeModule("ExpoLocalAuthentication"));
+  } catch {
+    return false;
+  }
+}
+
+function getBiometricFailureMessage(error: string): string {
+  switch (error) {
+    case "missing_usage_description":
+      return "Face ID permission is missing from this app build. Install a newly built iOS app to use Face ID.";
+    case "user_cancel":
+    case "system_cancel":
+    case "app_cancel":
+      return "Biometric setup was cancelled. Try again when you're ready.";
+    case "not_enrolled":
+      return "No biometrics are enrolled on this device. Set up Face ID or fingerprint in device settings.";
+    case "lockout":
+      return "Biometric authentication is temporarily locked. Try again later.";
+    case "not_available":
+      return "Biometric authentication is currently unavailable on this device.";
+    default:
+      return "Biometric authentication failed. Try again.";
+  }
+}
 
 function BackButton({ onPress }: { onPress: () => void }) {
   return (
@@ -83,6 +115,14 @@ export default function DeviceDetailsScreen({
   const [storedDetails, setStoredDetails] =
     useState<StoredDeviceDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLabel, setBiometricLabel] = useState("biometrics");
+  const [biometricMessage, setBiometricMessage] = useState("");
+  const [isUpdatingBiometrics, setIsUpdatingBiometrics] = useState(false);
+  const [localAuthentication, setLocalAuthentication] = useState<
+    typeof import("expo-local-authentication") | null
+  >(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -114,6 +154,123 @@ export default function DeviceDetailsScreen({
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkBiometricSupport = async () => {
+      try {
+        const savedPreference = await authStorage.getBiometricEnabled();
+        if (!isMounted) return;
+        setBiometricEnabled(savedPreference);
+
+        if (!hasLocalAuthenticationNativeModule()) {
+          setBiometricMessage(
+            "Biometric login is not included in this app build. Install an updated app build to use it."
+          );
+          return;
+        }
+
+        const module = await import("expo-local-authentication");
+        if (!isMounted) return;
+        setLocalAuthentication(module);
+
+        const [hasHardware, isEnrolled, types] = await Promise.all([
+          module.hasHardwareAsync(),
+          module.isEnrolledAsync(),
+          module.supportedAuthenticationTypesAsync()
+        ]);
+        if (!isMounted) return;
+
+        setBiometricAvailable(hasHardware && isEnrolled && types.length > 0);
+
+        const hasFace = types.includes(BIOMETRIC_FACIAL_RECOGNITION);
+        const hasFingerprint = types.includes(BIOMETRIC_FINGERPRINT);
+        if (Platform.OS === "ios") {
+          setBiometricLabel(
+            hasFace ? "Face ID" : hasFingerprint ? "Touch ID" : "biometrics"
+          );
+        } else if (hasFace && hasFingerprint) {
+          setBiometricLabel("face recognition or fingerprint");
+        } else if (hasFace) {
+          setBiometricLabel("face recognition");
+        } else if (hasFingerprint) {
+          setBiometricLabel("fingerprint");
+        }
+
+        if (!hasHardware) {
+          setBiometricMessage(
+            "This device does not support biometric authentication."
+          );
+        } else if (!isEnrolled || types.length === 0) {
+          setBiometricMessage(
+            "Set up Face ID, face recognition, or fingerprint in your device settings first."
+          );
+        } else {
+          setBiometricMessage("");
+        }
+      } catch {
+        if (!isMounted) return;
+        setBiometricAvailable(false);
+        setBiometricMessage(
+          "Biometric login is not included in this app build. Install an updated app build to use it."
+        );
+      }
+    };
+
+    void checkBiometricSupport();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleBiometricToggle = async () => {
+    if (isUpdatingBiometrics) return;
+    setIsUpdatingBiometrics(true);
+
+    try {
+      if (biometricEnabled) {
+        await authStorage.setBiometricEnabled(false);
+        await authStorage.clearPasscode();
+        setBiometricEnabled(false);
+        setBiometricMessage("Biometric login is disabled on this device.");
+        return;
+      }
+
+      if (!hasLocalAuthenticationNativeModule() || !localAuthentication) {
+        setBiometricMessage(
+          "Biometric login is not included in this app build. Install an updated app build to use it."
+        );
+        return;
+      }
+
+      if (!biometricAvailable) {
+        setBiometricMessage(
+          biometricMessage ||
+            "Set up Face ID, face recognition, or a fingerprint in your device settings to use biometrics."
+        );
+        return;
+      }
+
+      const result = await localAuthentication.authenticateAsync({
+        promptMessage: `Enable ${biometricLabel} for Jaiz eToken`,
+        cancelLabel: "Cancel",
+        disableDeviceFallback: true
+      });
+      if (!result.success) {
+        setBiometricMessage(getBiometricFailureMessage(result.error));
+        return;
+      }
+
+      await authStorage.setBiometricEnabled(true);
+      setBiometricEnabled(true);
+      setBiometricMessage("Biometric login is enabled on this device.");
+    } catch {
+      setBiometricMessage("Could not update biometric login. Please try again.");
+    } finally {
+      setIsUpdatingBiometrics(false);
+    }
+  };
 
   const displayedModel =
     deviceModel || storedDetails?.deviceModel || "This device";
@@ -184,6 +341,46 @@ export default function DeviceDetailsScreen({
           <DetailRow label="Location" value={location} />
           <DetailRow label="Registered on" value={registeredOn} />
           <DetailRow label="Last used" value={lastUsed} isLast />
+        </View>
+
+        <View className="mt-5 flex-row items-center justify-between rounded-3xl bg-white px-5 py-4">
+          <View className="mr-4 flex-1">
+            <Text className="text-[16px] font-outfit-semibold text-[#1B2D4A]">
+              Biometric login
+            </Text>
+            <Text className="mt-1 text-[13px] font-outfit text-[#67787F]">
+              {biometricMessage ||
+                (biometricEnabled
+                  ? `Use ${biometricLabel} to sign in securely.`
+                  : `Enable ${biometricLabel} for faster sign-in.`)}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{
+              checked: biometricEnabled,
+              disabled:
+                isUpdatingBiometrics ||
+                (!biometricEnabled &&
+                  (!localAuthentication || !biometricAvailable))
+            }}
+            accessibilityLabel="Enable biometric login"
+            onPress={() => void handleBiometricToggle()}
+            disabled={
+              isUpdatingBiometrics ||
+              (!biometricEnabled &&
+                (!localAuthentication || !biometricAvailable))
+            }
+            className={`h-8 w-14 justify-center rounded-full px-1 ${
+              biometricEnabled ? "bg-[#123E7C]" : "bg-[#C9CED6]"
+            } ${isUpdatingBiometrics ? "opacity-60" : ""}`}
+          >
+            <View
+              className={`h-6 w-6 rounded-full bg-white ${
+                biometricEnabled ? "self-end" : "self-start"
+              }`}
+            />
+          </Pressable>
         </View>
 
         {/* Actions */}

@@ -24,7 +24,7 @@
     "android": {
       "allowBackup": false,
       "softwareKeyboardLayoutMode": "pan",
-      "icon": "./assets/images/jaiz-favicon-logo.jpeg",
+      "icon": "./assets/images/jaizT.png",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/jaiz-favicon-logo.jpeg"

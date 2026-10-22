@@ -332,7 +332,7 @@ export interface DeviceRegistrationRequest {
 export interface DeviceRegistrationSuccessResponse {
   success: true;
   message: string;
-  data: {
+  data?: {
     deviceId: string;
     registeredAt: string;
   };

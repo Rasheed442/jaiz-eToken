@@ -1,5 +1,7 @@
 import { AlertTriangle, ArrowRight, Camera, Check, ChevronLeft, Mail } from 'lucide-react-native'
 import React, { useRef, useState } from 'react'
+import * as Application from 'expo-application'
+import * as Device from 'expo-device'
 import {
   ActivityIndicator,
   Animated,
@@ -10,6 +12,8 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { registrationApi } from '@/lib/api'
+import { authStorage } from '@/lib/auth/storage'
 
 type RegisterDeviceScreenProps = {
   onBack: () => void;
@@ -124,14 +128,50 @@ function VerifyOptionRow({
 export default function RegisterDeviceScreen({ onBack, onRegisterComplete }: RegisterDeviceScreenProps) {
   const [selected, setSelected] = useState<VerifyMethod>('otp')
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
   const buttonScale = useRef(new Animated.Value(1)).current
 
-  function handleRegister() {
+  async function handleRegister() {
+    if (submitting) return
     setSubmitting(true)
-    setTimeout(() => {
-      setSubmitting(false)
+    setError('')
+
+    try {
+      const accountNumber = await authStorage.getAccountNumber()
+      let deviceId = ''
+      if (Platform.OS === 'android') {
+        deviceId = Application.getAndroidId() || ''
+      } else if (Platform.OS === 'ios') {
+        deviceId = (await Application.getIosIdForVendorAsync()) || ''
+      }
+      deviceId = deviceId || (await authStorage.getDeviceId()) || ''
+
+      if (!accountNumber || !deviceId) {
+        throw new Error('Required account or device details are missing. Please log in again.')
+      }
+
+      const payload = {
+        accountNumber,
+        deviceId,
+        deviceFingerprint: `sha256_${deviceId}`,
+        deviceModel: Device.modelName || Device.deviceName || '',
+        osVersion: `${Platform.OS} ${Device.osVersion || ''}`.trim(),
+        appVersion: Application.nativeApplicationVersion || '2.1.0',
+        enableBiometric: await authStorage.getBiometricEnabled()
+      }
+
+      const response = await registrationApi.registerDevice(payload)
+      if (!response.success) {
+        setError(response.message || 'Could not register this device. Please try again.')
+        return
+      }
+
       onRegisterComplete()
-    }, 1200)
+    } catch (registrationError: any) {
+      setError(registrationError?.message || 'Could not register this device. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function pressIn() {
@@ -182,6 +222,8 @@ export default function RegisterDeviceScreen({ onBack, onRegisterComplete }: Reg
             />
           ))}
         </View>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* Spacer */}
         <View style={{ flex: 1 }} />
@@ -347,5 +389,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: COLORS.subtext,
+  },
+  errorText: {
+    marginTop: 16,
+    color: COLORS.dangerText,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 })

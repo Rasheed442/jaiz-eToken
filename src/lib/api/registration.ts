@@ -190,6 +190,11 @@ export const registrationApi = {
     );
   },
 
+  /** Revoke the device linked to the authenticated username. */
+  async revokeDevice(data: LogoutRequest): Promise<LogoutResponse> {
+    return apiClient.post<LogoutResponse>('device/revoke', data);
+  },
+
   /**
    * Activate eToken
    * POST api/v1/register/activate/{account_number}

@@ -14,6 +14,7 @@ const ACCOUNT_NUMBER_KEY = 'jaiz_account_number';
 const PASSCODE_KEY = 'jaiz_passcode';
 const DEVICE_ID_KEY = 'jaiz_device_id';
 const BIOMETRIC_ENABLED_KEY = 'jaiz_biometric_enabled';
+const REGISTRATION_OTP_RESEND_UNTIL_KEY = 'jaiz_registration_otp_resend_until';
 
 export interface AuthData {
   accessToken: string;
@@ -150,6 +151,40 @@ export const authStorage = {
     }
   },
 
+  async getRegistrationOtpResendUntil(): Promise<number | null> {
+    try {
+      const storedDeadline = await SecureStore.getItemAsync(
+        REGISTRATION_OTP_RESEND_UNTIL_KEY
+      );
+      const deadline = storedDeadline ? Number(storedDeadline) : NaN;
+      return Number.isFinite(deadline) ? deadline : null;
+    } catch (error) {
+      console.error('Error getting OTP resend deadline:', error);
+      return null;
+    }
+  },
+
+  async setRegistrationOtpResendUntil(deadline: number): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(
+        REGISTRATION_OTP_RESEND_UNTIL_KEY,
+        String(deadline)
+      );
+    } catch (error) {
+      console.error('Error saving OTP resend deadline:', error);
+      throw error;
+    }
+  },
+
+  async clearRegistrationOtpResendUntil(): Promise<void> {
+    try {
+      await SecureStore.deleteItemAsync(REGISTRATION_OTP_RESEND_UNTIL_KEY);
+    } catch (error) {
+      console.error('Error clearing OTP resend deadline:', error);
+      throw error;
+    }
+  },
+
   async setBiometricEnabled(enabled: boolean): Promise<void> {
     try {
       if (enabled) {
@@ -228,6 +263,7 @@ export const authStorage = {
       await SecureStore.deleteItemAsync(PASSCODE_KEY);
       await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
       await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
+      await SecureStore.deleteItemAsync(REGISTRATION_OTP_RESEND_UNTIL_KEY);
     } catch (error) {
       console.error('Error clearing all data:', error);
       throw error;

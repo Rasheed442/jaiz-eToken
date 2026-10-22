@@ -7,7 +7,6 @@ import * as Device from "expo-device";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   AlertCircle,
-  Bell,
   Copy,
   LogOut,
   RefreshCw,
@@ -33,7 +32,6 @@ import Toast from "../components/Toast";
 
 type HomeScreenProps = {
   fullName: string;
-  cifLast4: string;
   deviceName?: string;
   deviceLocation?: string;
   onManageDevice: () => void;
@@ -56,7 +54,6 @@ async function generateRandomSixDigitCode() {
 
 export default function HomeScreen({
   fullName,
-  cifLast4,
   deviceName = Device.modelName || Device.deviceName || "This device",
   deviceLocation,
   onManageDevice,
@@ -79,8 +76,23 @@ export default function HomeScreen({
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [passcodeInput, setPasscodeInput] = useState("");
   const [isVerifyingPasscode, setIsVerifyingPasscode] = useState(false);
+  const [accountNumber, setAccountNumber] = useState("");
   const progress = useSharedValue(1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    authStorage.getAccountNumber().then((storedAccountNumber) => {
+      if (isMounted && storedAccountNumber) {
+        setAccountNumber(storedAccountNumber);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const initials = fullName
     .split(" ")
@@ -307,20 +319,20 @@ export default function HomeScreen({
                 {fullName}
               </Text>
               <Text className="text-[13px] font-outfit text-[#67787F]">
-                Personal · CIF •••• {cifLast4}
+                Personal · {accountNumber || "----"}
               </Text>
             </View>
           </View>
 
           <View className="flex-row gap-2 items-center">
-            <Pressable
+            {/* <Pressable
               accessibilityRole="button"
               accessibilityLabel="Notifications"
               onPress={onNotificationsPress}
               className="h-11 w-11 items-center justify-center rounded-full bg-white active:opacity-70"
             >
               <Bell size={20} color="#1B2D4A" />
-            </Pressable>
+            </Pressable> */}
 
             <Pressable
               accessibilityRole="button"
@@ -455,28 +467,21 @@ export default function HomeScreen({
         </Pressable>
 
         {/* Footer */}
-        <View className="mt-auto flex-row items-center justify-between pb-4">
-          <View className="flex-row items-center">
-            <View className="h-10 w-10 items-center justify-center rounded-full border-2 border-[#F5B400] bg-[#193F7F]">
-              <Text className="text-[16px] font-outfit-semibold text-white ">
+        <View className="mt-auto flex-row items-center border-y border-gray-100 justify-center pb-4">
+          <View className="flex-row items-center ">
+            <View className="h-9 w-9 items-center justify-center rounded-md border-2 border-[#F5B400] bg-[#193F7F]">
+              <Text className="text-[14px] font-outfit-semibold text-white ">
                 J
               </Text>
             </View>
             <View className="ml-3">
-              <Text className="text-[15px] font-outfit-semibold text-[#123E7C]">
+              <Text className="text-[12px] font-outfit-semibold text-[#123E7C]">
                 JAIZ
               </Text>
               <Text className="text-[12px] font-outfit text-[#67787F]">
                 eTOKEN
               </Text>
             </View>
-          </View>
-
-          <View className="flex-row items-center gap-1.5 rounded-full bg-[#E7F7EE] px-3 py-3">
-            <View className="h-1.5 w-1.5 rounded-full bg-[#1E8E5A]" />
-            <Text className="text-[13px] font-outfit-medium text-[#1E8E5A]">
-              Active
-            </Text>
           </View>
         </View>
       </View>

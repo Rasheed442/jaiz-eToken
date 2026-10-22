@@ -5,7 +5,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Delete } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -336,51 +335,6 @@ export default function LoginScreen({
     }
   };
 
-  const handleBiometricToggle = async () => {
-    try {
-      if (biometricEnabled) {
-        await authStorage.setBiometricEnabled(false);
-        await authStorage.clearPasscode();
-        setBiometricEnabled(false);
-        setBiometricMessage("");
-        return;
-      }
-
-      if (!hasLocalAuthenticationNativeModule() || !localAuthentication) {
-        const message =
-          "Biometric login is not included in this app build. Install an updated app build to use it.";
-        setBiometricMessage(message);
-        Alert.alert("Biometrics unavailable", message);
-        return;
-      }
-
-      if (!biometricAvailable) {
-        const message = biometricMessage ||
-          "Set up Face ID, face recognition, or a fingerprint in your device settings to use biometric login.";
-        setBiometricMessage(message);
-        Alert.alert("Biometrics unavailable", message);
-        return;
-      }
-
-      const result = await localAuthentication.authenticateAsync({
-        promptMessage: `Enable ${biometricLabel} for Jaiz eToken`,
-        cancelLabel: "Cancel",
-        disableDeviceFallback: true
-      });
-      if (!result.success) {
-        console.info("Biometric enrollment prompt did not succeed:", result.error);
-        setBiometricMessage(getBiometricFailureMessage(result.error));
-        return;
-      }
-
-      await authStorage.setBiometricEnabled(true);
-      setBiometricEnabled(true);
-      setBiometricMessage("Biometric login is enabled on this device.");
-    } catch {
-      setBiometricMessage("Could not update biometric login. Please try again.");
-    }
-  };
-
   const handleBiometricLogin = async () => {
     console.info("Biometric login tapped", {
       biometricAvailable,
@@ -495,22 +449,12 @@ export default function LoginScreen({
               Biometric login
             </Text>
             <Text className="mt-0.5 text-[12px] font-outfit text-[#67787F]">
-              {biometricMessage || `Use ${biometricLabel} to log in`}
+              {biometricMessage ||
+                (biometricEnabled
+                  ? `Use ${biometricLabel} to log in`
+                  : "Manage biometric login in Device Details")}
             </Text>
           </View>
-          <Pressable
-            accessibilityRole="switch"
-            accessibilityState={{
-              checked: biometricEnabled,
-              disabled: !biometricEnabled && (!localAuthentication || !biometricAvailable)
-            }}
-            accessibilityLabel="Enable biometric login"
-            onPress={() => void handleBiometricToggle()}
-            disabled={!biometricEnabled && (!localAuthentication || !biometricAvailable)}
-            className={`h-8 w-14 justify-center rounded-full px-1 ${biometricEnabled ? "bg-[#123E7C]" : "bg-[#C9CED6]"}`}
-          >
-            <View className={`h-6 w-6 rounded-full bg-white ${biometricEnabled ? "self-end" : "self-start"}`} />
-          </Pressable>
         </View>
 
         {biometricEnabled && biometricAvailable ? (

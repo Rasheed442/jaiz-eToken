@@ -93,6 +93,8 @@ export default function HomeScreen() {
   const [forgotPasscodeUsername, setForgotPasscodeUsername] = useState("");
   const [forgotPasscodeAccountNumber, setForgotPasscodeAccountNumber] =
     useState("");
+  const [isDeregisteringDevice, setIsDeregisteringDevice] = useState(false);
+  const [deregisterDeviceError, setDeregisterDeviceError] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const lastActivityAt = useRef(Date.now());
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -171,6 +173,13 @@ export default function HomeScreen() {
     armInactivityTimer();
 
     const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "background") {
+        if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+        inactivityTimer.current = null;
+        void handleInactivityLogout();
+        return;
+      }
+
       if (state !== "active") return;
 
       const remaining =
@@ -207,11 +216,19 @@ export default function HomeScreen() {
         setForgotPasscodeAccountNumber(rememberedAccountNumber);
       }
 
-      // If user has auth data (tokens), they're logged in - go to home
+      // A previous session must not be restored after the app is relaunched.
       if (authData) {
-        setIsAuthenticated(true);
-        setCustomerName(authData.customerName);
-        setNextScreen("home");
+        const activeUsername = authData.username || rememberedUsername;
+        if (activeUsername) {
+          void registrationApi.logout({ username: activeUsername }).catch((error) => {
+            console.error("Startup session logout error:", error);
+          });
+          setUsername(activeUsername);
+          setNextScreen("login");
+        } else {
+          setNextScreen("welcome");
+        }
+        await authStorage.clearAuthSession();
       }
       // If user has remembered username but no tokens, they need to login
       else if (rememberedUsername) {
@@ -225,6 +242,42 @@ export default function HomeScreen() {
     };
     checkAuthStatus();
   }, []);
+
+  const handleDeregisterDevice = async () => {
+    if (isDeregisteringDevice) return;
+
+    setIsDeregisteringDevice(true);
+    setDeregisterDeviceError("");
+
+    try {
+      const activeUsername = (await authStorage.getUsername()) || username;
+      if (!activeUsername) {
+        throw new Error("Unable to find the account username. Please log in again.");
+      }
+
+      const response = await registrationApi.revokeDevice({
+        username: activeUsername
+      });
+
+      if (!response.success) {
+        setDeregisterDeviceError(
+          response.message || "Could not deregister this device. Please try again."
+        );
+        return;
+      }
+
+      await authStorage.clearAuthSession();
+      setIsAuthenticated(false);
+      setTransitionDirection("forward");
+      setScreen("device-deregistered");
+    } catch (error: any) {
+      setDeregisterDeviceError(
+        error?.message || "Could not deregister this device. Please try again."
+      );
+    } finally {
+      setIsDeregisteringDevice(false);
+    }
+  };
 
   const renderScreen = () => {
     if (screen === "animated-splash") {
@@ -469,7 +522,6 @@ export default function HomeScreen() {
       return (
         <DashboardScreen
           fullName={customerName || username || "Ibrahim Al-Hassan"}
-          cifLast4="4842"
           onManageDevice={() => {
             setTransitionDirection("forward");
             setScreen("device-details");
@@ -511,14 +563,13 @@ export default function HomeScreen() {
       return (
         <View className="flex-1 bg-[#F7F7F7]">
           <DeregisterDeviceScreen
-            onDeregister={() => {
-              setTransitionDirection("forward");
-              setScreen("device-deregistered");
-            }}
+            onDeregister={() => void handleDeregisterDevice()}
             onCancel={() => {
               setTransitionDirection("backward");
               setScreen("device-details");
             }}
+            isLoading={isDeregisteringDevice}
+            errorMessage={deregisterDeviceError}
           />
         </View>
       );

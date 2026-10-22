@@ -1,6 +1,7 @@
-import { ChevronLeft, Hash } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { ArrowRight, ChevronLeft, Hash } from "lucide-react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AppState,
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
@@ -14,6 +15,7 @@ import {
 import Animated, { SlideInLeft } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
+import { authStorage } from "../lib/auth/storage";
 
 type PersonalRegistrationScreenProps = {
   onBack: () => void;
@@ -287,6 +289,8 @@ export default function PersonalRegistrationScreen({
   const [verifiedRegistrationToken, setVerifiedRegistrationToken] =
     useState("");
   const [resendSeconds, setResendSeconds] = useState(0);
+  const [resendDeadline, setResendDeadline] = useState<number | null>(null);
+  const resendDeadlineRef = useRef<number | null>(null);
   const [isVerifyingAccount, setIsVerifyingAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
@@ -305,15 +309,63 @@ export default function PersonalRegistrationScreen({
     }
   }, [toast]);
 
-  // Resend countdown timer
+  const updateResendDeadline = useCallback((deadline: number | null) => {
+    resendDeadlineRef.current = deadline;
+    setResendDeadline(deadline);
+  }, []);
+
+  // Restore the absolute deadline so time spent outside this screen counts.
   useEffect(() => {
-    if (resendSeconds > 0) {
-      const timer = setTimeout(() => {
-        setResendSeconds((prev) => prev - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
+    let isMounted = true;
+    void authStorage.getRegistrationOtpResendUntil().then((deadline) => {
+      if (isMounted && deadline && !resendDeadlineRef.current) {
+        updateResendDeadline(deadline);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [updateResendDeadline]);
+
+  // Derive each tick from the deadline rather than decrementing a paused timer.
+  useEffect(() => {
+    if (resendDeadline === null) {
+      setResendSeconds(0);
+      return;
     }
-  }, [resendSeconds]);
+
+    const tick = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((resendDeadline - Date.now()) / 1000)
+      );
+      setResendSeconds(remaining);
+
+      if (remaining === 0 && resendDeadlineRef.current === resendDeadline) {
+        updateResendDeadline(null);
+        void authStorage
+          .clearRegistrationOtpResendUntil()
+          .catch((error) => console.error("Error clearing OTP resend deadline:", error));
+      }
+    };
+
+    tick();
+    if (resendDeadline <= Date.now()) return;
+
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [resendDeadline, updateResendDeadline]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      const deadline = resendDeadlineRef.current;
+      setResendSeconds(
+        deadline ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : 0
+      );
+    });
+    return () => subscription.remove();
+  }, []);
 
   const handleContinue = async () => {
     Keyboard.dismiss();
@@ -365,6 +417,13 @@ export default function PersonalRegistrationScreen({
 
       setCurrentStep(step + 1);
       setOtpCode("");
+      const deadline = Date.now() + 300 * 1000;
+      try {
+        await authStorage.setRegistrationOtpResendUntil(deadline);
+      } catch (storageError) {
+        console.error("Could not persist OTP resend deadline:", storageError);
+      }
+      updateResendDeadline(deadline);
       setResendSeconds(300);
       setShowOtp(true);
     } catch (error) {
@@ -440,6 +499,10 @@ export default function PersonalRegistrationScreen({
         }
 
         setVerifiedRegistrationToken(registrationToken);
+        updateResendDeadline(null);
+        void authStorage
+          .clearRegistrationOtpResendUntil()
+          .catch((error) => console.error("Error clearing OTP resend deadline:", error));
         setCurrentStep(step + 2);
         setShowOtp(false);
         setShowDetails(true);
@@ -470,252 +533,259 @@ export default function PersonalRegistrationScreen({
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-      {toast && (
-        <>
-          {console.log("Rendering toast:", toast)}
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onDismiss={() => setToast(null)}
-          />
-        </>
-      )}
-      <View className="px-6 pt-14">
-        <View className="flex-row items-center pt-6">
-          <BackButton
-            onPress={
-              showOtp
-                ? () => setShowOtp(false)
-                : showDetails
-                  ? () => {
-                      setShowDetails(false);
-                      setShowOtp(true);
-                    }
-                  : onBack
-            }
-          />
-          <View className="ml-3 flex-1">
-            <ProgressBar step={currentStep} totalSteps={totalSteps} />
+        {toast && (
+          <>
+            {console.log("Rendering toast:", toast)}
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onDismiss={() => setToast(null)}
+            />
+          </>
+        )}
+        <View className="px-6 pt-14">
+          <View className="flex-row items-center pt-6">
+            <BackButton
+              onPress={
+                showOtp
+                  ? () => setShowOtp(false)
+                  : showDetails
+                    ? () => {
+                        setShowDetails(false);
+                        setShowOtp(true);
+                      }
+                    : onBack
+              }
+            />
+            <View className="ml-3 flex-1">
+              <ProgressBar step={currentStep} totalSteps={totalSteps} />
+            </View>
           </View>
         </View>
-      </View>
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-6 pb-10 pt-7"
-        keyboardShouldPersistTaps="handled"
-      >
-        {!showOtp && !showDetails ? (
-          <>
-            <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
-              Personal details
-            </Text>
-            <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
-              Enter your account number to securely retrieve your registered
-              details.
-            </Text>
-
-            <View className="mt-7 gap-6">
-              <Field
-                label="Account Number"
-                placeholder="10-digit account number"
-                value={accountNumber}
-                onChangeText={(v) => {
-                  setAccountNumber(v.replace(/[^0-9]/g, "").slice(0, 10));
-                  setShowError(false);
-                }}
-                keyboardType="number-pad"
-                maxLength={10}
-                icon={
-                  isVerifyingAccount ? (
-                    <ActivityIndicator size="small" color="#123E7C" />
-                  ) : showDetails ? (
-                    <View className="h-5 w-5 items-center justify-center rounded-full bg-green-500">
-                      <Text className="text-[10px] font-bold text-white">
-                        ✓
-                      </Text>
-                    </View>
-                  ) : (
-                    <Hash size={20} color="#5C6478" />
-                  )
-                }
-                helperText={
-                  isVerifyingAccount
-                    ? "Validating account number..."
-                    : undefined
-                }
-              />
-            </View>
-
-            {showError && (
-              <Text className="mt-4 text-sm font-outfit text-rose-500">
-                Enter a valid 10-digit account number.
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="px-6 pb-10 pt-7"
+          keyboardShouldPersistTaps="handled"
+        >
+          {!showOtp && !showDetails ? (
+            <>
+              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+                Personal details
               </Text>
-            )}
+              <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
+                Enter your account number to securely retrieve your registered
+                details.
+              </Text>
 
-            <View className="mt-10">
-              <Pressable
-                accessibilityRole="button"
-                disabled={isVerifyingAccount || isSubmitting}
-                className={[
-                  "flex-row items-center justify-center rounded-2xl bg-[#123E7C] px-5 py-4 active:opacity-80",
-                  isVerifyingAccount || isSubmitting ? "opacity-60" : ""
-                ].join(" ")}
-                onPress={handleContinue}
-              >
-                {isVerifyingAccount ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <>
-                    <Text className="text-base font-outfit-bold text-white">
-                      Validate & Continue
-                    </Text>
-                    <Text className="ml-2  text-[20px] font-light text-white">
-                      ›
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
-          </>
-        ) : showOtp ? (
-          <Animated.View entering={SlideInLeft.duration(400).springify()}>
-            <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
-              Enter code
-            </Text>
-            <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
-              We sent a 6-digit code to {phoneNumber}
-            </Text>
-
-            <View className="mt-8">
-              <OtpInput value={otpCode} onChange={setOtpCode} />
-            </View>
-
-            <Pressable
-              disabled={resendSeconds > 0}
-              className={[
-                "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] bg-[#EEF2F6] px-4 py-4",
-                resendSeconds > 0 ? "opacity-80" : ""
-              ].join(" ")}
-              onPress={async () => {
-                setOtpCode("");
-                try {
-                  const response = await registrationApi.sendOtp({
-                    accountNumber: accountNumber.trim(),
-                    tokenType: "REGISTRATION_OTP"
-                  });
-                  if (response.success) {
-                    console.log("OTP resent successfully");
-                    setResendSeconds(300); // 5 minutes
-                  } else {
-                    setToast({ message: response.message, type: "error" });
+              <View className="mt-7 gap-6">
+                <Field
+                  label="Account Number"
+                  placeholder="10-digit account number"
+                  value={accountNumber}
+                  onChangeText={(v) => {
+                    setAccountNumber(v.replace(/[^0-9]/g, "").slice(0, 10));
+                    setShowError(false);
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  icon={
+                    isVerifyingAccount ? (
+                      <ActivityIndicator size="small" color="#123E7C" />
+                    ) : showDetails ? (
+                      <View className="h-5 w-5 items-center justify-center rounded-full bg-green-500">
+                        <Text className="text-[10px] font-bold text-white">
+                          ✓
+                        </Text>
+                      </View>
+                    ) : (
+                      <Hash size={20} color="#5C6478" />
+                    )
                   }
-                } catch (error: any) {
-                  setToast({
-                    message: error?.message || "Failed to resend OTP",
-                    type: "error"
-                  });
-                }
-              }}
-            >
-              <Text className="text-[18px] font-outfit-semibold text-[#193F7F]">
-                {resendLabel}
+                  helperText={
+                    isVerifyingAccount
+                      ? "Validating account number..."
+                      : undefined
+                  }
+                />
+              </View>
+
+              {showError && (
+                <Text className="mt-4 text-sm font-outfit text-rose-500">
+                  Enter a valid 10-digit account number.
+                </Text>
+              )}
+
+              <View className="mt-10">
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isVerifyingAccount || isSubmitting}
+                  className={[
+                    "min-h-[56px] flex-row items-center justify-center gap-2 rounded-2xl bg-[#123E7C] px-5 py-4 active:opacity-80",
+                    isVerifyingAccount || isSubmitting ? "opacity-60" : ""
+                  ].join(" ")}
+                  onPress={handleContinue}
+                >
+                  {isVerifyingAccount ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : null}
+                  <Text className="text-base font-outfit-bold text-white">
+                    {isVerifyingAccount ? "Validating…" : "Validate & Continue"}
+                  </Text>
+                  {!isVerifyingAccount && (
+                    <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.5} />
+                  )}
+                </Pressable>
+              </View>
+            </>
+          ) : showOtp ? (
+            <Animated.View entering={SlideInLeft.duration(400).springify()}>
+              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+                Enter code
               </Text>
-            </Pressable>
+              <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
+                We sent a 6-digit code to {phoneNumber}
+              </Text>
 
-            <View className="mt-4">
-              <Pressable
-                accessibilityRole="button"
-                className={[
-                  "flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-3",
-                  !isOtpComplete || isVerifyingOtp ? "opacity-60" : ""
-                ].join(" ")}
-                disabled={!isOtpComplete || isVerifyingOtp}
-                onPress={handleVerifyOtp}
-              >
-                {isVerifyingOtp ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <>
-                    <Text className="text-[22px] font-outfit-semibold text-white">
-                      Verify
-                    </Text>
-                    <Text className="ml-2 text-[28px] font-light text-white">
-                      ›
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
-          </Animated.View>
-        ) : (
-          <Animated.View entering={SlideInLeft.duration(400).springify()}>
-            <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
-              Confirm your details
-            </Text>
-            <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
-              We retrieved these details using your account number. Review them
-              before continuing.
-            </Text>
-            <View className="mt-7 gap-5">
-              {[
-                ["Account Number", accountNumber],
-                ["BVN", bvn],
-                ["First Name", firstName],
-                ["Middle Name", middleName],
-                ["Last Name", lastName],
-                ["Phone Number", phoneNumber],
-                ["Email", email],
-                ["Date of Birth", dateOfBirth],
-                // ["Branch Code", branchCode],
-                ["Domiciled Branch", domiciledBranch]
-              ]
-                .filter(([, value]) => Boolean(value))
-                .map(([label, value]) => {
-                  const displayValue =
-                    label === "Phone Number" ? maskPhoneNumber(value) : value;
+              <View className="mt-8">
+                <OtpInput value={otpCode} onChange={setOtpCode} />
+              </View>
 
-                  return (
-                    <View
-                      key={label}
-                      className="rounded-2xl bg-[#ECEDF0] px-4 py-3"
-                    >
-                      <Text className="text-[12px] font-outfit text-[#8A93A6]">
-                        {label}
-                      </Text>
-                      <Text className="mt-1 text-[15px] font-outfit-medium text-[#1B2D4A]">
-                        {displayValue}
-                      </Text>
-                    </View>
-                  );
-                })}
-            </View>
-            <View className="mt-8">
               <Pressable
-                accessibilityRole="button"
-                disabled={isSubmitting}
+                disabled={resendSeconds > 0}
                 className={[
-                  "flex-row items-center justify-center rounded-2xl bg-[#123E7C] px-5 py-4",
-                  isSubmitting ? "opacity-60" : ""
+                  "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] bg-[#EEF2F6] px-4 py-4",
+                  resendSeconds > 0 ? "opacity-80" : ""
                 ].join(" ")}
-                onPress={handleSubmitDetails}
+                onPress={async () => {
+                  setOtpCode("");
+                  try {
+                    const response = await registrationApi.sendOtp({
+                      accountNumber: accountNumber.trim(),
+                      tokenType: "REGISTRATION_OTP"
+                    });
+                    if (response.success) {
+                      console.log("OTP resent successfully");
+                    const deadline = Date.now() + 300 * 1000;
+                    try {
+                      await authStorage.setRegistrationOtpResendUntil(deadline);
+                    } catch (storageError) {
+                      console.error("Could not persist OTP resend deadline:", storageError);
+                    }
+                    updateResendDeadline(deadline);
+                    } else {
+                      setToast({ message: response.message, type: "error" });
+                    }
+                  } catch (error: any) {
+                    setToast({
+                      message: error?.message || "Failed to resend OTP",
+                      type: "error"
+                    });
+                  }
+                }}
               >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <>
-                    <Text className="text-base font-outfit-bold text-white">
-                      Continue{" "}
-                    </Text>
-                    <Text className="ml-2 text-[20px] font-light text-white">
-                      ›
-                    </Text>
-                  </>
-                )}
+                <Text className="text-[18px] font-outfit-semibold text-[#193F7F]">
+                  {resendLabel}
+                </Text>
               </Pressable>
-            </View>
-          </Animated.View>
-        )}
-      </ScrollView>
+
+              <View className="mt-4">
+                <Pressable
+                  accessibilityRole="button"
+                  className={[
+                    "flex-row items-center justify-center rounded-[28px] bg-[#123E7C] px-5 py-3",
+                    !isOtpComplete || isVerifyingOtp ? "opacity-60" : ""
+                  ].join(" ")}
+                  disabled={!isOtpComplete || isVerifyingOtp}
+                  onPress={handleVerifyOtp}
+                >
+                  {isVerifyingOtp ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <Text className="text-[22px] font-outfit-semibold text-white">
+                        Verify
+                      </Text>
+                      <Text className="ml-2 text-[28px] font-light text-white">
+                        <ArrowRight
+                          size={18}
+                          color="#FFFFFF"
+                          strokeWidth={2.5}
+                        />
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            </Animated.View>
+          ) : (
+            <Animated.View entering={SlideInLeft.duration(400).springify()}>
+              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+                Confirm your details
+              </Text>
+              <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
+                We retrieved these details using your account number. Review
+                them before continuing.
+              </Text>
+              <View className="mt-7 gap-5">
+                {[
+                  ["Account Number", accountNumber],
+                  ["BVN", bvn],
+                  ["First Name", firstName],
+                  ["Middle Name", middleName],
+                  ["Last Name", lastName],
+                  ["Phone Number", phoneNumber],
+                  ["Email", email],
+                  ["Date of Birth", dateOfBirth],
+                  // ["Branch Code", branchCode],
+                  ["Domiciled Branch", domiciledBranch]
+                ]
+                  .filter(([, value]) => Boolean(value))
+                  .map(([label, value]) => {
+                    const displayValue =
+                      label === "Phone Number" ? maskPhoneNumber(value) : value;
+
+                    return (
+                      <View
+                        key={label}
+                        className="rounded-2xl bg-[#ECEDF0] px-4 py-3"
+                      >
+                        <Text className="text-[12px] font-outfit text-[#8A93A6]">
+                          {label}
+                        </Text>
+                        <Text className="mt-1 text-[15px] font-outfit-medium text-[#1B2D4A]">
+                          {displayValue}
+                        </Text>
+                      </View>
+                    );
+                  })}
+              </View>
+              <View className="mt-8">
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isSubmitting}
+                  className={[
+                    "flex-row items-center justify-center rounded-2xl bg-[#123E7C] px-5 py-4",
+                    isSubmitting ? "opacity-60" : ""
+                  ].join(" ")}
+                  onPress={handleSubmitDetails}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <Text className="text-base font-outfit-bold text-white">
+                        Continue{" "}
+                      </Text>
+                      <Text className="ml-2 text-[20px] font-light text-white">
+                        ›
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            </Animated.View>
+          )}
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
