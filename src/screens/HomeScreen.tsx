@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -467,22 +468,13 @@ export default function HomeScreen({
         </Pressable>
 
         {/* Footer */}
-        <View className="mt-auto flex-row items-center border-y border-gray-100 justify-center pb-4">
-          <View className="flex-row items-center ">
-            <View className="h-9 w-9 items-center justify-center rounded-md border-2 border-[#F5B400] bg-[#193F7F]">
-              <Text className="text-[14px] font-outfit-semibold text-white ">
-                J
-              </Text>
-            </View>
-            <View className="ml-3">
-              <Text className="text-[12px] font-outfit-semibold text-[#123E7C]">
-                JAIZ
-              </Text>
-              <Text className="text-[12px] font-outfit text-[#67787F]">
-                eTOKEN
-              </Text>
-            </View>
-          </View>
+        <View className="mt-auto flex-row items-center justify-center border-y border-gray-100 py-3">
+          <Image
+            source={require("../../assets/images/footerjlogo.jpeg")}
+            accessibilityLabel="Jaiz eToken"
+            resizeMode="contain"
+            style={{ width: 100, height: 32 }}
+          />
         </View>
       </View>
 
