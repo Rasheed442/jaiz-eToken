@@ -470,10 +470,10 @@ export default function HomeScreen({
         {/* Footer */}
         <View className="mt-auto flex-row items-center justify-center border-y border-gray-100 py-3">
           <Image
-            source={require("../../assets/images/footerjlogo.jpeg")}
+            source={require("../../assets/images/footerjlogo.png")}
             accessibilityLabel="Jaiz eToken"
             resizeMode="contain"
-            style={{ width: 100, height: 32 }}
+            style={{ width: 140, height: 32 }}
           />
         </View>
       </View>

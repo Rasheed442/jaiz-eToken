@@ -23,7 +23,7 @@ export type {
     LogoutResponse, MetaMapWebhookRequest,
     MetaMapWebhookResponse, RefreshTokenRequest,
     RefreshTokenResponse, ResetPasscodeRequest,
-    ResetPasscodeResponse, SecurityQuestion,
+    ResetPasscodeResponse, RevokeDeviceRequest, SecurityQuestion,
     StartVerificationRequest,
     StartVerificationResponse, VerificationStatusResponse,
     VerifySecurityQuestionsRequest,

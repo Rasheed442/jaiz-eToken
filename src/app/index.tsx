@@ -97,6 +97,7 @@ export default function HomeScreen() {
   const [deregisterDeviceError, setDeregisterDeviceError] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const lastActivityAt = useRef(Date.now());
+  const backgroundedAt = useRef<number | null>(null);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTimingOut = useRef(false);
 
@@ -148,6 +149,10 @@ export default function HomeScreen() {
     }
 
     lastActivityAt.current = Date.now();
+    if (backgroundedAt.current !== null) {
+      backgroundedAt.current = null;
+      void authStorage.clearSessionBackgroundedAt();
+    }
     armInactivityTimer();
   }, [armInactivityTimer, handleInactivityLogout, isAuthenticated]);
 
@@ -155,6 +160,9 @@ export default function HomeScreen() {
     const authData = await authStorage.getAuthData();
     if (!authData) return;
 
+    lastActivityAt.current = Date.now();
+    backgroundedAt.current = null;
+    await authStorage.clearSessionBackgroundedAt();
     setIsAuthenticated(true);
     setUsername(authData.username);
     setCustomerName(authData.customerName);
@@ -169,26 +177,42 @@ export default function HomeScreen() {
       return;
     }
 
-    lastActivityAt.current = Date.now();
-    armInactivityTimer();
+    const remaining =
+      INACTIVITY_TIMEOUT_MS - (Date.now() - lastActivityAt.current);
+    if (remaining <= 0) {
+      void handleInactivityLogout();
+      return;
+    }
+    armInactivityTimer(remaining);
 
     const appStateSubscription = AppState.addEventListener("change", (state) => {
       if (state === "background") {
+        const timestamp = Date.now();
+        backgroundedAt.current = timestamp;
+        lastActivityAt.current = timestamp;
         if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
         inactivityTimer.current = null;
-        void handleInactivityLogout();
+        void authStorage.setSessionBackgroundedAt(timestamp);
         return;
       }
 
       if (state !== "active") return;
 
-      const remaining =
-        INACTIVITY_TIMEOUT_MS - (Date.now() - lastActivityAt.current);
-      if (remaining <= 0) {
-        void handleInactivityLogout();
-      } else {
-        armInactivityTimer(remaining);
-      }
+      void (async () => {
+        const timestamp =
+          backgroundedAt.current ??
+          (await authStorage.getSessionBackgroundedAt());
+        backgroundedAt.current = null;
+        await authStorage.clearSessionBackgroundedAt();
+        if (timestamp !== null && lastActivityAt.current <= timestamp) {
+          lastActivityAt.current = timestamp;
+        }
+
+        const remaining =
+          INACTIVITY_TIMEOUT_MS - (Date.now() - lastActivityAt.current);
+        if (remaining <= 0) void handleInactivityLogout();
+        else armInactivityTimer(remaining);
+      })();
     });
 
     return () => {
@@ -216,19 +240,35 @@ export default function HomeScreen() {
         setForgotPasscodeAccountNumber(rememberedAccountNumber);
       }
 
-      // A previous session must not be restored after the app is relaunched.
       if (authData) {
         const activeUsername = authData.username || rememberedUsername;
-        if (activeUsername) {
-          void registrationApi.logout({ username: activeUsername }).catch((error) => {
-            console.error("Startup session logout error:", error);
-          });
-          setUsername(activeUsername);
+        const backgroundTimestamp =
+          await authStorage.getSessionBackgroundedAt();
+        const gracePeriodExpired =
+          backgroundTimestamp !== null &&
+          Date.now() - backgroundTimestamp >= INACTIVITY_TIMEOUT_MS;
+
+        if (gracePeriodExpired) {
+          if (activeUsername) {
+            void registrationApi
+              .logout({ username: activeUsername })
+              .catch((error) => {
+                console.error("Session timeout logout error:", error);
+              });
+          }
+          await authStorage.clearAuthSession();
+          setIsAuthenticated(false);
+          setUsername(activeUsername || rememberedUsername || "");
           setNextScreen("login");
         } else {
-          setNextScreen("welcome");
+          lastActivityAt.current = backgroundTimestamp ?? Date.now();
+          backgroundedAt.current = null;
+          await authStorage.clearSessionBackgroundedAt();
+          if (activeUsername) setUsername(activeUsername);
+          setCustomerName(authData.customerName || rememberedCustomerName || "");
+          setIsAuthenticated(true);
+          setNextScreen("home");
         }
-        await authStorage.clearAuthSession();
       }
       // If user has remembered username but no tokens, they need to login
       else if (rememberedUsername) {
@@ -250,13 +290,15 @@ export default function HomeScreen() {
     setDeregisterDeviceError("");
 
     try {
-      const activeUsername = (await authStorage.getUsername()) || username;
-      if (!activeUsername) {
-        throw new Error("Unable to find the account username. Please log in again.");
+      const activePhoneNumber = (await authStorage.getUsername()) || username;
+      if (!activePhoneNumber) {
+        throw new Error(
+          "Unable to find the account phone number. Please log in again."
+        );
       }
 
       const response = await registrationApi.revokeDevice({
-        username: activeUsername
+        username: activePhoneNumber
       });
 
       if (!response.success) {
@@ -445,6 +487,9 @@ export default function HomeScreen() {
               setScreen("facial-verification");
             }}
             onProfileCreated={() => {
+              lastActivityAt.current = Date.now();
+              backgroundedAt.current = null;
+              void authStorage.clearSessionBackgroundedAt();
               setIsAuthenticated(true);
               setTransitionDirection("forward");
               setScreen("etoken-activated");
@@ -477,6 +522,9 @@ export default function HomeScreen() {
             // Load stored auth data after successful login
             const authData = await authStorage.getAuthData();
             if (authData) {
+              lastActivityAt.current = Date.now();
+              backgroundedAt.current = null;
+              await authStorage.clearSessionBackgroundedAt();
               setIsAuthenticated(true);
               setCustomerName(authData.customerName);
               setTransitionDirection("forward");
@@ -551,6 +599,7 @@ export default function HomeScreen() {
               setScreen("register-device");
             }}
             onDeregisterDevice={() => {
+              setDeregisterDeviceError("");
               setTransitionDirection("forward");
               setScreen("deregister-device");
             }}
@@ -565,6 +614,7 @@ export default function HomeScreen() {
           <DeregisterDeviceScreen
             onDeregister={() => void handleDeregisterDevice()}
             onCancel={() => {
+              setDeregisterDeviceError("");
               setTransitionDirection("backward");
               setScreen("device-details");
             }}

@@ -32,6 +32,7 @@ import type {
     RefreshTokenResponse,
     ResetPasscodeRequest,
     ResetPasscodeResponse,
+    RevokeDeviceRequest,
     SendOtpRequest,
     SendOtpResponse,
     StartVerificationRequest,
@@ -190,8 +191,8 @@ export const registrationApi = {
     );
   },
 
-  /** Revoke the device linked to the authenticated username. */
-  async revokeDevice(data: LogoutRequest): Promise<LogoutResponse> {
+  /** Revoke the device using the account phone number as username. */
+  async revokeDevice(data: RevokeDeviceRequest): Promise<LogoutResponse> {
     return apiClient.post<LogoutResponse>('device/revoke', data);
   },
 
@@ -231,6 +232,16 @@ export const registrationApi = {
     return apiClient.post<ForgotPasscodeResponse>(
       'passcode/forgot',
       data
+    );
+  },
+
+  /**
+   * Get the security questions configured for an account.
+   * GET api/v1/register/security-questions/{account_number}
+   */
+  async getSecurityQuestions(accountNumber: string): Promise<unknown> {
+    return apiClient.get<unknown>(
+      `register/security-questions/${encodeURIComponent(accountNumber)}`
     );
   },
 

@@ -24,15 +24,54 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
 
-const SECURITY_QUESTIONS = [
-  "What was the name of your first school?",
-  "What is your mother's maiden name?",
-  "In what city were you born?"
-];
-
 const PASSCODE_LENGTH = 6;
 const OTP_LENGTH = 6;
 const TOTAL_STEPS = 3;
+
+function getQuestionText(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (!value || typeof value !== "object") return null;
+
+  const question = value as Record<string, unknown>;
+  for (const key of ["question", "questionText", "securityQuestion", "text", "label"]) {
+    const candidate = question[key];
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+  return null;
+}
+
+function extractSecurityQuestions(response: unknown): string[] {
+  const seen = new Set<unknown>();
+  const findQuestions = (value: unknown, depth = 0): string[] => {
+    if (!value || depth > 4 || seen.has(value)) return [];
+    if (typeof value === "object") seen.add(value);
+
+    if (Array.isArray(value)) {
+      const questions = value
+        .map(getQuestionText)
+        .filter((question): question is string => Boolean(question));
+      if (questions.length) return questions;
+      for (const item of value) {
+        const nestedQuestions = findQuestions(item, depth + 1);
+        if (nestedQuestions.length) return nestedQuestions;
+      }
+      return [];
+    }
+
+    if (typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      for (const key of ["securityQuestions", "questions", "data", "result"]) {
+        const nestedQuestions = findQuestions(record[key], depth + 1);
+        if (nestedQuestions.length) return nestedQuestions;
+      }
+    }
+    return [];
+  };
+
+  return findQuestions(response);
+}
 
 type Step = 1 | 2 | 3; // 1: account verification, 2: security questions, 3: reset passcode
 
@@ -178,9 +217,8 @@ export default function ForgotPasscodeScreen({
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [username, setUsername] = useState(initialUsername);
   const [accountNumber, setAccountNumber] = useState(initialAccountNumber);
-  const [securityAnswers, setSecurityAnswers] = useState<string[]>(
-    SECURITY_QUESTIONS.map(() => "")
-  );
+  const [securityQuestions, setSecurityQuestions] = useState<string[]>([]);
+  const [securityAnswers, setSecurityAnswers] = useState<string[]>([]);
   const [otp, setOtp] = useState("");
   const [newPasscode, setNewPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
@@ -206,14 +244,45 @@ export default function ForgotPasscodeScreen({
       return;
     }
 
-    // Just validate and move to step 2 - no API call yet
+    setIsLoading(true);
     setError(null);
-    setCurrentStep(2);
+    try {
+      const response = await registrationApi.getSecurityQuestions(
+        accountNumber.trim()
+      );
+      if (
+        response &&
+        typeof response === "object" &&
+        "success" in response &&
+        response.success === false
+      ) {
+        throw new Error(
+          "We couldn't load your security questions. Check your account number and try again."
+        );
+      }
+
+      const questions = extractSecurityQuestions(response);
+      if (!questions.length) {
+        throw new Error(
+          "No security questions were found for this account. Check your account number and try again."
+        );
+      }
+
+      setSecurityQuestions(questions);
+      setSecurityAnswers(questions.map(() => ""));
+      setCurrentStep(2);
+    } catch (err: any) {
+      setError(
+        err?.message || "We couldn't load your security questions. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleStep2Submit = async () => {
-    if (securityAnswers.some((a) => !a.trim())) {
-      setError("Answer all three security questions to continue.");
+    if (!securityQuestions.length || securityAnswers.some((a) => !a.trim())) {
+      setError("Answer all security questions to continue.");
       return;
     }
 
@@ -229,7 +298,7 @@ export default function ForgotPasscodeScreen({
 
       // Then verify security questions
       const answersPayload: Record<string, string> = {};
-      SECURITY_QUESTIONS.forEach((question, index) => {
+      securityQuestions.forEach((question, index) => {
         answersPayload[question] = securityAnswers[index].trim();
       });
 
@@ -392,7 +461,7 @@ export default function ForgotPasscodeScreen({
           {/* Step 2 */}
           {currentStep === 2 && (
             <View className="mt-8 gap-5">
-              {SECURITY_QUESTIONS.map((question, index) => (
+              {securityQuestions.map((question, index) => (
                 <Field
                   key={question}
                   label={question}

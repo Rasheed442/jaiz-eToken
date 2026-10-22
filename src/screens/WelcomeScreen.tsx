@@ -277,7 +277,7 @@ export default function WelcomeScreen({
           <View
             className={`${compact ? "mt-2" : "mt-3"} flex-row items-center justify-center`}
           >
-            <Text className="text-[13px] font-outfit text-[#69717B]">
+            <Text className="text-[14px] font-outfit text-[#6F7783]">
               Already registered?{" "}
             </Text>
             <Pressable onPress={onLogin} hitSlop={8} accessibilityRole="button">

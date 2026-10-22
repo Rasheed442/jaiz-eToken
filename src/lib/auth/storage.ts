@@ -15,6 +15,7 @@ const PASSCODE_KEY = 'jaiz_passcode';
 const DEVICE_ID_KEY = 'jaiz_device_id';
 const BIOMETRIC_ENABLED_KEY = 'jaiz_biometric_enabled';
 const REGISTRATION_OTP_RESEND_UNTIL_KEY = 'jaiz_registration_otp_resend_until';
+const SESSION_BACKGROUND_AT_KEY = 'jaiz_session_background_at';
 
 export interface AuthData {
   accessToken: string;
@@ -198,6 +199,34 @@ export const authStorage = {
     }
   },
 
+  async setSessionBackgroundedAt(timestamp: number): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(SESSION_BACKGROUND_AT_KEY, String(timestamp));
+    } catch (error) {
+      console.error('Error saving session background time:', error);
+    }
+  },
+
+  async getSessionBackgroundedAt(): Promise<number | null> {
+    try {
+      const value = await SecureStore.getItemAsync(SESSION_BACKGROUND_AT_KEY);
+      if (!value) return null;
+      const timestamp = Number(value);
+      return Number.isFinite(timestamp) ? timestamp : null;
+    } catch (error) {
+      console.error('Error getting session background time:', error);
+      return null;
+    }
+  },
+
+  async clearSessionBackgroundedAt(): Promise<void> {
+    try {
+      await SecureStore.deleteItemAsync(SESSION_BACKGROUND_AT_KEY);
+    } catch (error) {
+      console.error('Error clearing session background time:', error);
+    }
+  },
+
   /**
    * Get all auth data
    */
@@ -243,6 +272,7 @@ export const authStorage = {
         await SecureStore.deleteItemAsync(PASSCODE_KEY);
       }
       await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
+      await SecureStore.deleteItemAsync(SESSION_BACKGROUND_AT_KEY);
       // Keep USERNAME_KEY for convenience
     } catch (error) {
       console.error('Error clearing auth session:', error);
@@ -263,6 +293,7 @@ export const authStorage = {
       await SecureStore.deleteItemAsync(PASSCODE_KEY);
       await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
       await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
+      await SecureStore.deleteItemAsync(SESSION_BACKGROUND_AT_KEY);
       await SecureStore.deleteItemAsync(REGISTRATION_OTP_RESEND_UNTIL_KEY);
     } catch (error) {
       console.error('Error clearing all data:', error);

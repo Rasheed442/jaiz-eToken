@@ -731,6 +731,11 @@ export interface LogoutRequest {
   username: string;
 }
 
+/** Revoke a device using the account phone number in the username field. */
+export interface RevokeDeviceRequest {
+  username: string;
+}
+
 /**
  * Logout Success Response
  */
