@@ -285,7 +285,10 @@ class ApiClient {
             }
 
             const data = await retryResponse.json();
-            console.log("✅ API Response data (after refresh):", data);
+            console.log(
+              "✅ API Response data (after refresh):",
+              endpoint === 'token/provision' ? '[REDACTED]' : data
+            );
             return data as T;
           } else {
             // Refresh failed, clear auth and redirect to login
@@ -310,7 +313,10 @@ class ApiClient {
       }
 
       const data = await response.json();
-      console.log("✅ API Response data:", data);
+      console.log(
+        "✅ API Response data:",
+        endpoint === 'token/provision' ? '[REDACTED]' : data
+      );
       return data as T;
     } catch (error) {
       clearTimeout(timeoutId);

@@ -318,6 +318,7 @@ export default function HomeScreen() {
         return;
       }
 
+      await authStorage.clearTotpCredentials();
       await authStorage.clearAuthSession();
       setIsAuthenticated(false);
       setTransitionDirection("forward");

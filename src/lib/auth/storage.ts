@@ -5,6 +5,7 @@
  */
 
 import * as SecureStore from 'expo-secure-store';
+import type { TotpCredentials } from './totp';
 
 const ACCESS_TOKEN_KEY = 'jaiz_access_token';
 const REFRESH_TOKEN_KEY = 'jaiz_refresh_token';
@@ -18,6 +19,7 @@ const REGISTRATION_OTP_RESEND_UNTIL_KEY = 'jaiz_registration_otp_resend_until';
 const SESSION_BACKGROUND_AT_KEY = 'jaiz_session_background_at';
 const TOKEN_CODE_KEY = 'jaiz_current_token_code';
 const TOKEN_EXPIRES_AT_KEY = 'jaiz_current_token_expires_at';
+const TOTP_CREDENTIALS_KEY = 'jaiz_totp_credentials';
 const DEVICE_REGISTERED_AT_KEY = 'jaiz_device_registered_at';
 const DEVICE_LAST_USED_AT_KEY = 'jaiz_device_last_used_at';
 
@@ -270,6 +272,49 @@ export const authStorage = {
     }
   },
 
+  async setTotpCredentials(credentials: TotpCredentials): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(
+        TOTP_CREDENTIALS_KEY,
+        JSON.stringify(credentials)
+      );
+    } catch (error) {
+      console.error('Error securely saving TOTP credentials:', error);
+      throw error;
+    }
+  },
+
+  async getTotpCredentials(): Promise<TotpCredentials | null> {
+    try {
+      const stored = await SecureStore.getItemAsync(TOTP_CREDENTIALS_KEY);
+      if (!stored) return null;
+
+      const credentials = JSON.parse(stored) as Partial<TotpCredentials>;
+      if (
+        typeof credentials.secret !== 'string' ||
+        typeof credentials.algorithm !== 'string' ||
+        typeof credentials.digits !== 'number' ||
+        typeof credentials.periodSeconds !== 'number' ||
+        typeof credentials.issuedAt !== 'string'
+      ) {
+        return null;
+      }
+
+      return credentials as TotpCredentials;
+    } catch (error) {
+      console.error('Error reading TOTP credentials:', error);
+      return null;
+    }
+  },
+
+  async clearTotpCredentials(): Promise<void> {
+    try {
+      await SecureStore.deleteItemAsync(TOTP_CREDENTIALS_KEY);
+    } catch (error) {
+      console.error('Error clearing TOTP credentials:', error);
+    }
+  },
+
   async setDeviceRegisteredAt(timestamp: string): Promise<void> {
     try {
       await SecureStore.setItemAsync(DEVICE_REGISTERED_AT_KEY, timestamp);
@@ -374,6 +419,7 @@ export const authStorage = {
       await SecureStore.deleteItemAsync(SESSION_BACKGROUND_AT_KEY);
       await SecureStore.deleteItemAsync(REGISTRATION_OTP_RESEND_UNTIL_KEY);
       await this.clearTokenState();
+      await this.clearTotpCredentials();
       await SecureStore.deleteItemAsync(DEVICE_REGISTERED_AT_KEY);
       await SecureStore.deleteItemAsync(DEVICE_LAST_USED_AT_KEY);
     } catch (error) {

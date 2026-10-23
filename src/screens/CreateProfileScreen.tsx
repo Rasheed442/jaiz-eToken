@@ -25,6 +25,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
 import { authStorage } from "../lib/auth/storage";
+import { createTotp } from "../lib/auth/totp";
 
 type CreateProfileScreenProps = {
   onBack: () => void;
@@ -461,11 +462,25 @@ export default function CreateProfileScreen({
         },
         activationResponse.data.accessToken
       );
-      if (!provisionResponse.success) {
+      if (!provisionResponse.success || !provisionResponse.data?.secret) {
         setError(
           provisionResponse.message ||
             "Could not provision your eToken. Please try again."
         );
+        return;
+      }
+
+      try {
+        createTotp(provisionResponse.data);
+        await authStorage.setTotpCredentials({
+          secret: provisionResponse.data.secret,
+          algorithm: provisionResponse.data.algorithm,
+          digits: provisionResponse.data.digits,
+          periodSeconds: provisionResponse.data.periodSeconds,
+          issuedAt: provisionResponse.data.issuedAt
+        });
+      } catch {
+        setError("Could not securely save the eToken setup. Please try again.");
         return;
       }
       console.log("eToken provisioned successfully");

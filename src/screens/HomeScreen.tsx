@@ -1,8 +1,8 @@
 import { registrationApi } from "@/lib/api";
 import { authStorage } from "@/lib/auth/storage";
+import { createTotp } from "@/lib/auth/totp";
 import * as Application from "expo-application";
 import * as Clipboard from "expo-clipboard";
-import * as Crypto from "expo-crypto";
 import * as Device from "expo-device";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -38,20 +38,7 @@ type HomeScreenProps = {
   onManageDevice: () => void;
   onNotificationsPress: () => void;
   onLogout: () => void;
-  codeDurationSeconds?: number;
 };
-
-async function generateRandomSixDigitCode() {
-  let code = "";
-
-  while (code.length < 6) {
-    const [byte] = await Crypto.getRandomBytesAsync(1);
-    // Reject the six values above 249 so each decimal digit is equally likely.
-    if (byte < 250) code += String(byte % 10);
-  }
-
-  return code;
-}
 
 export default function HomeScreen({
   fullName,
@@ -59,11 +46,10 @@ export default function HomeScreen({
   deviceLocation,
   onManageDevice,
   onNotificationsPress,
-  onLogout,
-  codeDurationSeconds = 30
+  onLogout
 }: HomeScreenProps) {
   const [code, setCode] = useState("------");
-  const [secondsLeft, setSecondsLeft] = useState(codeDurationSeconds);
+  const [secondsLeft, setSecondsLeft] = useState(0);
   const [tokenExpiresAt, setTokenExpiresAt] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -78,10 +64,9 @@ export default function HomeScreen({
   const [passcodeInput, setPasscodeInput] = useState("");
   const [isVerifyingPasscode, setIsVerifyingPasscode] = useState(false);
   const [accountNumber, setAccountNumber] = useState("");
-  const progress = useSharedValue(1);
+  const progress = useSharedValue(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasInitializedToken = useRef(false);
-  const expirationTriggered = useRef(false);
+  const totpRef = useRef<ReturnType<typeof createTotp> | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,50 +102,48 @@ export default function HomeScreen({
     try {
       setIsGenerating(true);
 
-      const username = await authStorage.getUsername();
-      const passcode = await authStorage.getPasscode();
-      let deviceId = await authStorage.getDeviceId();
+      let totp = totpRef.current;
+      if (!totp) {
+        const credentials = await authStorage.getTotpCredentials();
+        if (!credentials) {
+          setCode("------");
+          setTokenExpiresAt(null);
+          setSecondsLeft(0);
+          setShowPasscodeModal(true);
+          return;
+        }
 
-      if (!deviceId) {
-        if (Platform.OS === "android") {
-          deviceId = Application.getAndroidId() || "";
-        } else if (Platform.OS === "ios") {
-          deviceId = (await Application.getIosIdForVendorAsync()) || "";
-        }
-        if (deviceId) {
-          await authStorage.setAuthData({
-            accessToken: (await authStorage.getAccessToken()) || "",
-            refreshToken: (await authStorage.getRefreshToken()) || "",
-            username: username || "",
-            customerName: (await authStorage.getCustomerName()) || "",
-            accountNumber: (await authStorage.getAccountNumber()) || "",
-            passcode: passcode || "",
-            deviceId
-          });
-        }
+        totp = createTotp(credentials);
+        totpRef.current = totp;
       }
 
-      if (!username || !passcode || !deviceId) {
-        setIsGenerating(false);
-        setShowPasscodeModal(true);
+      const currentTime = Date.now();
+      const tokenValue = totp.generate({ timestamp: currentTime });
+      const remainingMs = totp.remaining({ timestamp: currentTime });
+      if (remainingMs <= 0) {
+        setCode("------");
+        setTokenExpiresAt(null);
+        setSecondsLeft(0);
+        progress.value = 0;
         return;
       }
 
-      const tokenValue = await generateRandomSixDigitCode();
       const formattedToken = tokenValue.replace(/(\d{3})(\d{3})/, "$1 $2");
-      const expiresAt = Date.now() + codeDurationSeconds * 1000;
-      await authStorage.setTokenState({ code: formattedToken, expiresAt });
+      const expiresAt = currentTime + remainingMs;
       setCode(formattedToken);
       setTokenExpiresAt(expiresAt);
-      setSecondsLeft(Math.ceil((expiresAt - Date.now()) / 1000));
-      expirationTriggered.current = false;
-    } catch (error: any) {
-      console.error("Token generation error:", error);
-      showToastMessage(error?.message || "Failed to generate token", "error");
+      setSecondsLeft(Math.ceil(remainingMs / 1000));
+    } catch {
+      console.error("Unable to generate the local eToken.");
+      setShowPasscodeModal(true);
+      showToastMessage(
+        "This device's eToken setup is invalid. Please set it up again.",
+        "error"
+      );
     } finally {
       setIsGenerating(false);
     }
-  }, [codeDurationSeconds, progress, showToastMessage]);
+  }, [showToastMessage]);
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -181,9 +164,11 @@ export default function HomeScreen({
       );
       setSecondsLeft(secondsRemaining);
 
-      if (secondsRemaining === 0 && !expirationTriggered.current) {
-        expirationTriggered.current = true;
-        void generateToken();
+      if (secondsRemaining === 0) {
+        setCode("------");
+        setTokenExpiresAt(null);
+        progress.value = 0;
+        timerRef.current = null;
         return;
       }
 
@@ -197,7 +182,7 @@ export default function HomeScreen({
       updateCountdown,
       Math.min(delayToNextSecond, remainingMs)
     );
-  }, [tokenExpiresAt, progress, generateToken]);
+  }, [tokenExpiresAt, progress]);
 
   useEffect(() => {
     if (tokenExpiresAt !== null) startTimer();
@@ -207,37 +192,37 @@ export default function HomeScreen({
   }, [tokenExpiresAt, startTimer]);
 
   useEffect(() => {
-    if (showPasscodeModal || !hasInitializedToken.current) return;
-    void generateToken();
-  }, [showPasscodeModal, generateToken]);
-
-  useEffect(() => {
     let isMounted = true;
 
-    const restoreToken = async () => {
-      const storedToken = await authStorage.getTokenState();
+    const initializeTotp = async () => {
+      await authStorage.clearTokenState();
+      if (!isMounted) return;
+      const credentials = await authStorage.getTotpCredentials();
       if (!isMounted) return;
 
-      if (storedToken && storedToken.expiresAt > Date.now()) {
-        setCode(storedToken.code);
-        setTokenExpiresAt(storedToken.expiresAt);
-        setSecondsLeft(Math.ceil((storedToken.expiresAt - Date.now()) / 1000));
-        hasInitializedToken.current = true;
-        return;
-      }
-
-      await authStorage.clearTokenState();
-      if (isMounted) {
-        hasInitializedToken.current = true;
-        await generateToken();
+      if (credentials) {
+        try {
+          totpRef.current = createTotp(credentials);
+          setCode("------");
+          setTokenExpiresAt(null);
+          setSecondsLeft(0);
+        } catch {
+          setShowPasscodeModal(true);
+          showToastMessage(
+            "This device's eToken setup is invalid. Please set it up again.",
+            "error"
+          );
+        }
+      } else {
+        setShowPasscodeModal(true);
       }
     };
 
-    void restoreToken();
+    void initializeTotp();
     return () => {
       isMounted = false;
     };
-  }, [generateToken]);
+  }, [showToastMessage]);
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${progress.value * 100}%`
@@ -293,6 +278,42 @@ export default function HomeScreen({
       const response = await registrationApi.login(payload);
 
       if (response.success && response.data) {
+        const provisionResponse = await registrationApi.provisionToken(
+          {
+            username,
+            passcode: passcodeInput,
+            deviceId
+          },
+          response.data.accessToken
+        );
+
+        if (!provisionResponse.success || !provisionResponse.data?.secret) {
+          showToastMessage(
+            provisionResponse.message ||
+              "Could not set up your eToken on this device.",
+            "error"
+          );
+          return;
+        }
+
+        let provisionedTotp: ReturnType<typeof createTotp>;
+        try {
+          provisionedTotp = createTotp(provisionResponse.data);
+          await authStorage.setTotpCredentials({
+            secret: provisionResponse.data.secret,
+            algorithm: provisionResponse.data.algorithm,
+            digits: provisionResponse.data.digits,
+            periodSeconds: provisionResponse.data.periodSeconds,
+            issuedAt: provisionResponse.data.issuedAt
+          });
+        } catch {
+          showToastMessage(
+            "Could not securely save the eToken setup. Please try again.",
+            "error"
+          );
+          return;
+        }
+
         await authStorage.setAuthData({
           accessToken: response.data.accessToken,
           refreshToken: response.data.refreshToken,
@@ -303,9 +324,18 @@ export default function HomeScreen({
           deviceId
         });
 
+        await authStorage.setDeviceLastUsedAt(new Date().toISOString());
+        totpRef.current = provisionedTotp;
         setShowPasscodeModal(false);
         setPasscodeInput("");
-        showToastMessage("Passcode verified successfully", "success");
+        setCode("------");
+        setTokenExpiresAt(null);
+        setSecondsLeft(0);
+        progress.value = 0;
+        showToastMessage(
+          "eToken setup complete. Tap Generate OTP when you need a code.",
+          "success"
+        );
       } else {
         showToastMessage(response.message || "Invalid passcode", "error");
       }
@@ -436,7 +466,9 @@ export default function HomeScreen({
           {/* )} */}
 
           <Text className="mt-3 text-[14px] font-outfit text-white">
-            Your one-time verification code
+            {tokenExpiresAt === null
+              ? "Tap Generate OTP when you need a code"
+              : "Your one-time verification code"}
           </Text>
 
           <View className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-white/25">
@@ -447,7 +479,7 @@ export default function HomeScreen({
           </View>
 
           <Text className="py-4 text-[13px] font-outfit text-white">
-            Expires in {timeLabel}
+            {tokenExpiresAt === null ? "Code not generated" : `Expires in ${timeLabel}`}
           </Text>
         </View>
 
@@ -456,7 +488,10 @@ export default function HomeScreen({
           <Pressable
             accessibilityRole="button"
             onPress={handleCopy}
-            className="flex-1 items-center rounded-2xl bg-white px-4 py-4 active:opacity-70"
+            disabled={code === "------" || isGenerating}
+            className={`flex-1 items-center rounded-2xl bg-white px-4 py-4 active:opacity-70 ${
+              code === "------" || isGenerating ? "opacity-50" : ""
+            }`}
           >
             <View className="h-9 w-9 items-center justify-center rounded-full bg-[#EAF0FB]">
               <Copy size={18} color="#123E7C" />
@@ -469,16 +504,20 @@ export default function HomeScreen({
           <Pressable
             accessibilityRole="button"
             onPress={handleGenerateNew}
-            disabled={isGenerating}
+            disabled={isGenerating || isVerifyingPasscode}
             className={`flex-1 items-center rounded-2xl bg-white px-4 py-4 active:opacity-70 ${
-              isGenerating ? "opacity-50" : ""
+              isGenerating || isVerifyingPasscode ? "opacity-50" : ""
             }`}
           >
             <View className="h-9 w-9 items-center justify-center rounded-full bg-[#EAF0FB]">
-              <RefreshCw size={18} color="#123E7C" />
+              {isGenerating ? (
+                <ActivityIndicator size="small" color="#123E7C" />
+              ) : (
+                <RefreshCw size={18} color="#123E7C" />
+              )}
             </View>
             <Text className="mt-2 text-[14px] font-outfit-medium text-[#1B2D4A]">
-              Generate new
+              Generate OTP
             </Text>
           </Pressable>
         </View>
@@ -606,11 +645,12 @@ export default function HomeScreen({
             </View>
 
             <Text className="mt-5 text-center text-[22px] font-outfit-semibold text-[#1B2D4A]">
-              Enter Passcode
+              Set Up This Device’s eToken
             </Text>
 
             <Text className="mt-3 text-center text-[15px] font-outfit text-[#67787F] leading-[22px]">
-              Please enter your 6-digit passcode to continue generating tokens.
+              Enter your 6-digit passcode to securely provision a TOTP secret
+              for this device.
             </Text>
 
             <View className="mt-6">
@@ -659,7 +699,7 @@ export default function HomeScreen({
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text className="text-[17px] font-outfit-semibold text-white">
-                      Verify
+                      Set Up Token
                     </Text>
                   )}
                 </Pressable>

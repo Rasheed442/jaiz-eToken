@@ -333,9 +333,29 @@ export interface ProvisionTokenRequest {
   deviceId: string;
 }
 
+export interface ProvisionTokenData {
+  secret: string;
+  provisioningUri: string;
+  algorithm: string;
+  digits: number;
+  periodSeconds: number;
+  issuedAt: string;
+  notice?: string;
+}
+
 export type ProvisionTokenResponse =
-  | ApiSuccessResponse<unknown>
-  | ApiErrorResponse;
+  | {
+      success: true;
+      message: string;
+      data: ProvisionTokenData;
+      timestamp?: string;
+    }
+  | {
+      success: false;
+      message: string;
+      errorCode?: string;
+      timestamp?: string;
+    };
 
 /**
  * Device Registration Success Response
