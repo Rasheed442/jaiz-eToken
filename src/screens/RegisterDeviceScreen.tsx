@@ -166,6 +166,10 @@ export default function RegisterDeviceScreen({ onBack, onRegisterComplete }: Reg
         return
       }
 
+      await authStorage.setDeviceRegisteredAt(
+        response.data?.registeredAt || new Date().toISOString()
+      )
+
       onRegisterComplete()
     } catch (registrationError: any) {
       setError(registrationError?.message || 'Could not register this device. Please try again.')

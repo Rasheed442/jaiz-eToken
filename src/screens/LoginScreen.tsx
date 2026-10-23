@@ -10,7 +10,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
   useWindowDimensions
 } from "react-native";
@@ -125,7 +124,14 @@ function PasscodeDots({ length, filled }: { length: number; filled: number }) {
                 transform: [{ scale: isFilled ? 1.1 : 1 }]
               }}
             />
-            {i < length - 1 && <View className="w-3.5" />}
+            {i < length - 1 && (
+              <Text
+                accessibilityElementsHidden
+                className="mx-1 text-[15px] font-outfit-medium text-[#AAB6C5]"
+              >
+                -
+              </Text>
+            )}
           </View>
         );
       })}
@@ -205,12 +211,10 @@ export default function LoginScreen({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEnablingBiometric, setIsEnablingBiometric] = useState(false);
-  const [Checkusername, seChecktUsername] = useState("");
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLabel, setBiometricLabel] = useState("biometrics");
   const [biometricMessage, setBiometricMessage] = useState("");
-  const [phoneFocused, setPhoneFocused] = useState(false);
   const [localAuthentication, setLocalAuthentication] = useState<
     typeof import("expo-local-authentication") | null
   >(null);
@@ -256,11 +260,11 @@ export default function LoginScreen({
             hasFace ? "Face ID" : hasFingerprint ? "Touch ID" : "biometrics"
           );
         } else if (hasFace && hasFingerprint) {
-          setBiometricLabel("face recognition or fingerprint");
+          setBiometricLabel("Biometrics");
         } else if (hasFace) {
-          setBiometricLabel("face recognition");
+          setBiometricLabel("Biometrics");
         } else if (hasFingerprint) {
-          setBiometricLabel("fingerprint");
+          setBiometricLabel("Biometric");
         }
 
         if (!hasHardware) {
@@ -287,17 +291,6 @@ export default function LoginScreen({
     return () => {
       isMounted = false;
     };
-  }, []);
-
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      const rememberedUsername = await authStorage.getUsername();
-
-      if (rememberedUsername) {
-        seChecktUsername(rememberedUsername);
-      }
-    };
-    checkAuthStatus();
   }, []);
 
   const nameParts = customerName.trim().split(/\s+/).filter(Boolean);
@@ -357,6 +350,8 @@ export default function LoginScreen({
       const response = await registrationApi.login(payload);
 
       if (response.success && response.data) {
+        await authStorage.setDeviceLastUsedAt(new Date().toISOString());
+
         // Store authentication data
         await authStorage.setAuthData({
           accessToken: response.data.accessToken,
@@ -597,34 +592,7 @@ export default function LoginScreen({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {Checkusername ? null : (
-          <Text className="text-[14px] font-outfit-medium text-[#1B2D4A]">
-            Phone Number
-          </Text>
-        )}
-        {Checkusername ? null : (
-          <TextInput
-            value={username}
-            onChangeText={onUsernameChange}
-            editable={!!onUsernameChange}
-            placeholder="Enter your phone number"
-            placeholderTextColor="#9AA5B1"
-            autoCapitalize="none"
-            autoCorrect={false}
-            onFocus={() => setPhoneFocused(true)}
-            onBlur={() => setPhoneFocused(false)}
-            style={{
-              borderWidth: 1.5,
-              borderColor: phoneFocused ? BLUE : "#E3E7EC",
-              backgroundColor: phoneFocused ? "#FFFFFF" : "#F5F7FA"
-            }}
-            className={`mt-2 rounded-2xl px-4 py-4 text-[16px] font-outfit text-[#1B2D4A] ${
-              !onUsernameChange ? "opacity-70" : ""
-            }`}
-          />
-        )}
-
-        <Text className="mt-1 text-center text-[21px] font-outfit-semibold text-[#102F62]">
+        <Text className="text-center text-[21px] font-outfit-semibold text-[#102F62]">
           Enter your passcode
         </Text>
         <PasscodeDots length={PASSCODE_LENGTH} filled={passcode.length} />

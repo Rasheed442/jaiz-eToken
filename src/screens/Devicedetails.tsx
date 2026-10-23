@@ -1,18 +1,17 @@
 import { authStorage } from "@/lib/auth/storage";
-import { requireOptionalNativeModule } from "expo-modules-core";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
+import { requireOptionalNativeModule } from "expo-modules-core";
 import {
   ArrowRight,
   ChevronLeft,
-  Smartphone,
-  Trash2
+  Smartphone
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   View
@@ -34,6 +33,8 @@ type StoredDeviceDetails = {
   deviceModel: string;
   deviceId: string;
   isActive: boolean;
+  registeredAt: string | null;
+  lastUsedAt: string | null;
 };
 
 const BIOMETRIC_FACIAL_RECOGNITION = 2;
@@ -64,6 +65,20 @@ function getBiometricFailureMessage(error: string): string {
     default:
       return "Biometric authentication failed. Try again.";
   }
+}
+
+function formatDateTime(value: string | null | undefined, fallback: string) {
+  if (!value) return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
 
 function BackButton({ onPress }: { onPress: () => void }) {
@@ -129,17 +144,22 @@ export default function DeviceDetailsScreen({
 
     const loadDeviceDetails = async () => {
       try {
-        const [deviceId, accessToken] = await Promise.all([
-          authStorage.getDeviceId(),
-          authStorage.getAccessToken()
-        ]);
+        const [deviceId, accessToken, registeredAt, lastUsedAt] =
+          await Promise.all([
+            authStorage.getDeviceId(),
+            authStorage.getAccessToken(),
+            authStorage.getDeviceRegisteredAt(),
+            authStorage.getDeviceLastUsedAt()
+          ]);
 
         if (isMounted) {
           setStoredDetails({
             deviceModel:
               Device.modelName || Application.applicationName || "This device",
             deviceId: deviceId || "Unavailable",
-            isActive: Boolean(accessToken && deviceId)
+            isActive: Boolean(accessToken && deviceId),
+            registeredAt,
+            lastUsedAt
           });
         }
       } catch (error) {
@@ -266,7 +286,9 @@ export default function DeviceDetailsScreen({
       setBiometricEnabled(true);
       setBiometricMessage("Biometric login is enabled on this device.");
     } catch {
-      setBiometricMessage("Could not update biometric login. Please try again.");
+      setBiometricMessage(
+        "Could not update biometric login. Please try again."
+      );
     } finally {
       setIsUpdatingBiometrics(false);
     }
@@ -280,6 +302,14 @@ export default function DeviceDetailsScreen({
     fullDeviceId.length > 16
       ? `${fullDeviceId.slice(0, 8)}…${fullDeviceId.slice(-4)}`
       : fullDeviceId;
+  const displayedRegisteredOn =
+    registeredOn !== "----"
+      ? registeredOn
+      : formatDateTime(storedDetails?.registeredAt, "Not available");
+  const displayedLastUsed =
+    lastUsed !== "------"
+      ? lastUsed
+      : formatDateTime(storedDetails?.lastUsedAt, "Not yet used");
 
   return (
     <SafeAreaView className="flex-1 bg-[#F3F5F7]">
@@ -339,8 +369,8 @@ export default function DeviceDetailsScreen({
           <DetailRow label="Model" value={displayedModel} />
           <DetailRow label="Device ID" value={displayedDeviceId} />
           <DetailRow label="Location" value={location} />
-          <DetailRow label="Registered on" value={registeredOn} />
-          <DetailRow label="Last used" value={lastUsed} isLast />
+          <DetailRow label="Registered on" value={displayedRegisteredOn} />
+          <DetailRow label="Last used" value={displayedLastUsed} isLast />
         </View>
 
         <View className="mt-5 flex-row items-center justify-between rounded-3xl bg-white px-5 py-4">
@@ -395,7 +425,7 @@ export default function DeviceDetailsScreen({
           <ArrowRight size={20} color="#123E7C" />
         </Pressable>
 
-        <Pressable
+        {/* <Pressable
           accessibilityRole="button"
           onPress={onDeregisterDevice}
           className="mt-3 flex-row items-center justify-center gap-3 rounded-2xl border-[1.5px] border-[#E57373] px-5 py-5 active:opacity-70"
@@ -404,7 +434,7 @@ export default function DeviceDetailsScreen({
             Deregister This Device
           </Text>
           <Trash2 size={20} color="#D32F2F" />
-        </Pressable>
+        </Pressable> */}
       </ScrollView>
     </SafeAreaView>
   );

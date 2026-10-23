@@ -32,7 +32,9 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ],
       "package": "com.rasheed44.jaiz"
     },
@@ -71,9 +73,8 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "07db28b4-9f49-482e-9c00-17eac4dc501e"
+        "projectId": "f6fb3523-2331-4ca5-a1cf-c77875318c0f"
       }
-    },
-    "owner": "ralphadigital"
+    }
   }
 }

@@ -200,7 +200,10 @@ class ApiClient {
     console.log("🌐 API Request:", {
       method: options.method,
       url,
-      body: endpoint.includes('webhooks/metamap') ? '[REDACTED]' : options.body,
+      body:
+        endpoint.includes('webhooks/metamap') || endpoint === 'token/provision'
+          ? '[REDACTED]'
+          : options.body,
     });
 
     try {
@@ -326,10 +329,15 @@ class ApiClient {
   /**
    * POST request
    */
-  async post<T>(endpoint: string, data?: unknown): Promise<T> {
+  async post<T>(
+    endpoint: string,
+    data?: unknown,
+    headers?: Record<string, string>
+  ): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
+      headers,
     });
   }
 

@@ -28,6 +28,8 @@ import type {
     LogoutResponse,
     MetaMapWebhookRequest,
     MetaMapWebhookResponse,
+    ProvisionTokenRequest,
+    ProvisionTokenResponse,
     RefreshTokenRequest,
     RefreshTokenResponse,
     ResetPasscodeRequest,
@@ -188,6 +190,18 @@ export const registrationApi = {
     return apiClient.post<DeviceRegistrationResponse>(
       'register/device',
       data
+    );
+  },
+
+  /** Provision the eToken after registering this device. */
+  async provisionToken(
+    data: ProvisionTokenRequest,
+    accessToken: string
+  ): Promise<ProvisionTokenResponse> {
+    return apiClient.post<ProvisionTokenResponse>(
+      'token/provision',
+      data,
+      { Authorization: `Bearer ${accessToken}` }
     );
   },
 

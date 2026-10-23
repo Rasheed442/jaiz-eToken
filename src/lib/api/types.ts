@@ -326,6 +326,17 @@ export interface DeviceRegistrationRequest {
   enableBiometric: boolean;
 }
 
+/** Token provisioning request made after device registration. */
+export interface ProvisionTokenRequest {
+  username: string;
+  passcode: string;
+  deviceId: string;
+}
+
+export type ProvisionTokenResponse =
+  | ApiSuccessResponse<unknown>
+  | ApiErrorResponse;
+
 /**
  * Device Registration Success Response
  */

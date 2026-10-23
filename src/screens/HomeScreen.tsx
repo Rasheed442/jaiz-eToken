@@ -64,7 +64,7 @@ export default function HomeScreen({
 }: HomeScreenProps) {
   const [code, setCode] = useState("------");
   const [secondsLeft, setSecondsLeft] = useState(codeDurationSeconds);
-  const [tokenDuration, setTokenDuration] = useState(codeDurationSeconds);
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -79,7 +79,9 @@ export default function HomeScreen({
   const [isVerifyingPasscode, setIsVerifyingPasscode] = useState(false);
   const [accountNumber, setAccountNumber] = useState("");
   const progress = useSharedValue(1);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasInitializedToken = useRef(false);
+  const expirationTriggered = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -145,14 +147,13 @@ export default function HomeScreen({
       }
 
       const tokenValue = await generateRandomSixDigitCode();
-      setCode(tokenValue.replace(/(\d{3})(\d{3})/, "$1 $2"));
-      setTokenDuration(codeDurationSeconds);
-      setSecondsLeft(codeDurationSeconds);
-      progress.value = 1;
-      progress.value = withTiming(0, {
-        duration: codeDurationSeconds * 1000,
-        easing: Easing.linear
-      });
+      const formattedToken = tokenValue.replace(/(\d{3})(\d{3})/, "$1 $2");
+      const expiresAt = Date.now() + codeDurationSeconds * 1000;
+      await authStorage.setTokenState({ code: formattedToken, expiresAt });
+      setCode(formattedToken);
+      setTokenExpiresAt(expiresAt);
+      setSecondsLeft(Math.ceil((expiresAt - Date.now()) / 1000));
+      expirationTriggered.current = false;
     } catch (error: any) {
       console.error("Token generation error:", error);
       showToastMessage(error?.message || "Failed to generate token", "error");
@@ -162,38 +163,81 @@ export default function HomeScreen({
   }, [codeDurationSeconds, progress, showToastMessage]);
 
   const startTimer = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    setSecondsLeft(tokenDuration);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (tokenExpiresAt === null) return;
+
+    const remainingMs = Math.max(0, tokenExpiresAt - Date.now());
+    setSecondsLeft(Math.ceil(remainingMs / 1000));
     progress.value = 1;
     progress.value = withTiming(0, {
-      duration: tokenDuration * 1000,
+      duration: remainingMs,
       easing: Easing.linear
     });
 
-    intervalRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          generateToken();
-          return tokenDuration;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [tokenDuration, progress, generateToken]);
+    const updateCountdown = () => {
+      const secondsRemaining = Math.max(
+        0,
+        Math.ceil((tokenExpiresAt - Date.now()) / 1000)
+      );
+      setSecondsLeft(secondsRemaining);
+
+      if (secondsRemaining === 0 && !expirationTriggered.current) {
+        expirationTriggered.current = true;
+        void generateToken();
+        return;
+      }
+
+      const now = Date.now();
+      const delayToNextSecond = 1000 - (now % 1000);
+      timerRef.current = setTimeout(updateCountdown, delayToNextSecond);
+    };
+
+    const delayToNextSecond = 1000 - (Date.now() % 1000);
+    timerRef.current = setTimeout(
+      updateCountdown,
+      Math.min(delayToNextSecond, remainingMs)
+    );
+  }, [tokenExpiresAt, progress, generateToken]);
 
   useEffect(() => {
-    if (code !== "------") startTimer();
+    if (tokenExpiresAt !== null) startTimer();
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [code, startTimer]);
+  }, [tokenExpiresAt, startTimer]);
 
   useEffect(() => {
-    if (!showPasscodeModal) generateToken();
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    if (showPasscodeModal || !hasInitializedToken.current) return;
+    void generateToken();
   }, [showPasscodeModal, generateToken]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreToken = async () => {
+      const storedToken = await authStorage.getTokenState();
+      if (!isMounted) return;
+
+      if (storedToken && storedToken.expiresAt > Date.now()) {
+        setCode(storedToken.code);
+        setTokenExpiresAt(storedToken.expiresAt);
+        setSecondsLeft(Math.ceil((storedToken.expiresAt - Date.now()) / 1000));
+        hasInitializedToken.current = true;
+        return;
+      }
+
+      await authStorage.clearTokenState();
+      if (isMounted) {
+        hasInitializedToken.current = true;
+        await generateToken();
+      }
+    };
+
+    void restoreToken();
+    return () => {
+      isMounted = false;
+    };
+  }, [generateToken]);
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${progress.value * 100}%`
@@ -202,12 +246,14 @@ export default function HomeScreen({
   const handleCopy = async () => {
     if (code === "------" || isGenerating) return;
     await Clipboard.setStringAsync(code.replace(/\s/g, ""));
+    await authStorage.setDeviceLastUsedAt(new Date().toISOString());
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const handleGenerateNew = () => {
-    generateToken();
+  const handleGenerateNew = async () => {
+    await generateToken();
+    await authStorage.setDeviceLastUsedAt(new Date().toISOString());
   };
 
   const handlePasscodeSubmit = async () => {
@@ -279,15 +325,8 @@ export default function HomeScreen({
     setIsLoggingOut(true);
 
     try {
-      const username = await authStorage.getUsername();
-      if (username) {
-        await registrationApi.logout({ username });
-      }
-    } catch (error) {
-      console.error("Logout API error:", error);
-      // Continue with local logout even if API fails
-    } finally {
       await authStorage.clearAuthSession();
+    } finally {
       setIsLoggingOut(false);
       setShowLogoutModal(false);
       onLogout();

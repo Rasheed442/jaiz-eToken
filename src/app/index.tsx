@@ -96,6 +96,7 @@ export default function HomeScreen() {
   const [isDeregisteringDevice, setIsDeregisteringDevice] = useState(false);
   const [deregisterDeviceError, setDeregisterDeviceError] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasSplashCompleted, setHasSplashCompleted] = useState(false);
   const lastActivityAt = useRef(Date.now());
   const backgroundedAt = useRef<number | null>(null);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -225,63 +226,72 @@ export default function HomeScreen() {
   // Check if user has already registered and determine where to go
   useEffect(() => {
     const checkAuthStatus = async () => {
-      const rememberedUsername = await authStorage.getUsername();
-      const rememberedCustomerName = await authStorage.getCustomerName();
-      const rememberedAccountNumber = await authStorage.getAccountNumber();
-      const authData = await authStorage.getAuthData();
+      let destination: Screen = "welcome";
+      let destinationUsername = "";
+      let destinationCustomerName = "";
 
-      if (rememberedUsername) {
-        setUsername(rememberedUsername);
-      }
-      if (rememberedCustomerName) {
-        setCustomerName(rememberedCustomerName);
-      }
-      if (rememberedAccountNumber) {
-        setForgotPasscodeAccountNumber(rememberedAccountNumber);
-      }
+      try {
+        const rememberedUsername = await authStorage.getUsername();
+        const rememberedCustomerName = await authStorage.getCustomerName();
+        const rememberedAccountNumber = await authStorage.getAccountNumber();
+        const authData = await authStorage.getAuthData();
+        destinationUsername = rememberedUsername || "";
+        destinationCustomerName = rememberedCustomerName || "";
 
-      if (authData) {
-        const activeUsername = authData.username || rememberedUsername;
-        const backgroundTimestamp =
-          await authStorage.getSessionBackgroundedAt();
-        const gracePeriodExpired =
-          backgroundTimestamp !== null &&
-          Date.now() - backgroundTimestamp >= INACTIVITY_TIMEOUT_MS;
-
-        if (gracePeriodExpired) {
-          if (activeUsername) {
-            void registrationApi
-              .logout({ username: activeUsername })
-              .catch((error) => {
-                console.error("Session timeout logout error:", error);
-              });
-          }
-          await authStorage.clearAuthSession();
-          setIsAuthenticated(false);
-          setUsername(activeUsername || rememberedUsername || "");
-          setNextScreen("login");
-        } else {
-          lastActivityAt.current = backgroundTimestamp ?? Date.now();
-          backgroundedAt.current = null;
-          await authStorage.clearSessionBackgroundedAt();
-          if (activeUsername) setUsername(activeUsername);
-          setCustomerName(authData.customerName || rememberedCustomerName || "");
-          setIsAuthenticated(true);
-          setNextScreen("home");
+        if (rememberedAccountNumber) {
+          setForgotPasscodeAccountNumber(rememberedAccountNumber);
         }
-      }
-      // If user has remembered username but no tokens, they need to login
-      else if (rememberedUsername) {
-        // setNextScreen("welcome");
-        setNextScreen("login");
-      }
-      // Otherwise, show welcome screen (new user)
-      else {
-        setNextScreen("welcome");
+
+        if (authData) {
+          const activeUsername = authData.username || rememberedUsername;
+          const backgroundTimestamp =
+            await authStorage.getSessionBackgroundedAt();
+          const gracePeriodExpired =
+            backgroundTimestamp !== null &&
+            Date.now() - backgroundTimestamp >= INACTIVITY_TIMEOUT_MS;
+
+          if (gracePeriodExpired) {
+            if (activeUsername) {
+              void registrationApi
+                .logout({ username: activeUsername })
+                .catch((error) => {
+                  console.error("Session timeout logout error:", error);
+                });
+            }
+            await authStorage.clearAuthSession();
+            setIsAuthenticated(false);
+            destinationUsername = activeUsername || rememberedUsername || "";
+            destination = "login";
+          } else {
+            lastActivityAt.current = backgroundTimestamp ?? Date.now();
+            backgroundedAt.current = null;
+            await authStorage.clearSessionBackgroundedAt();
+            destinationUsername = activeUsername || rememberedUsername || "";
+            destinationCustomerName =
+              authData.customerName || rememberedCustomerName || "";
+            setIsAuthenticated(true);
+            destination = "home";
+          }
+        } else if (rememberedUsername) {
+          destination = "login";
+        }
+      } catch (error) {
+        console.error("Could not restore the saved session:", error);
+      } finally {
+        setUsername(destinationUsername);
+        if (destinationCustomerName) setCustomerName(destinationCustomerName);
+        setNextScreen(destination);
       }
     };
     checkAuthStatus();
   }, []);
+
+  useEffect(() => {
+    if (!hasSplashCompleted || !nextScreen) return;
+
+    setTransitionDirection("forward");
+    setScreen(nextScreen);
+  }, [hasSplashCompleted, nextScreen]);
 
   const handleDeregisterDevice = async () => {
     if (isDeregisteringDevice) return;
@@ -326,12 +336,7 @@ export default function HomeScreen() {
       return (
         <View className="flex-1 bg-[#050505]">
           <AnimatedSplashScreen
-            onComplete={() => {
-              if (nextScreen) {
-                setTransitionDirection("forward");
-                setScreen(nextScreen);
-              }
-            }}
+            onComplete={() => setHasSplashCompleted(true)}
           />
         </View>
       );

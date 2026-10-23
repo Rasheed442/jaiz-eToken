@@ -419,7 +419,7 @@ export default function CreateProfileScreen({
         deviceId = (await Application.getIosIdForVendorAsync()) || "";
       }
 
-      await registrationApi.registerDevice({
+      const deviceRegistrationResponse = await registrationApi.registerDevice({
         accountNumber,
         deviceId,
         deviceFingerprint: "sha256_" + deviceId, // Simplified fingerprint
@@ -428,9 +428,19 @@ export default function CreateProfileScreen({
         appVersion: Application.nativeApplicationVersion || "2.1.0",
         enableBiometric: false
       });
+      if (!deviceRegistrationResponse.success) {
+        setError(
+          deviceRegistrationResponse.message ||
+            "Could not register this device. Please try again."
+        );
+        return;
+      }
+      await authStorage.setDeviceRegisteredAt(
+        deviceRegistrationResponse.data?.registeredAt || new Date().toISOString()
+      );
       console.log("Device registered successfully");
 
-      // Activate eToken after device registration
+      // Activate first to obtain the access token required for provisioning.
       const activationResponse =
         await registrationApi.activateEtoken(accountNumber);
       console.log(
@@ -442,6 +452,23 @@ export default function CreateProfileScreen({
         setError(activationResponse?.message || "Failed to activate eToken.");
         return;
       }
+
+      const provisionResponse = await registrationApi.provisionToken(
+        {
+          username: phoneNumber.trim(),
+          passcode,
+          deviceId
+        },
+        activationResponse.data.accessToken
+      );
+      if (!provisionResponse.success) {
+        setError(
+          provisionResponse.message ||
+            "Could not provision your eToken. Please try again."
+        );
+        return;
+      }
+      console.log("eToken provisioned successfully");
 
       // Store authentication data before moving to the activation screen.
       await authStorage.setAuthData({

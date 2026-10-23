@@ -16,6 +16,15 @@ const DEVICE_ID_KEY = 'jaiz_device_id';
 const BIOMETRIC_ENABLED_KEY = 'jaiz_biometric_enabled';
 const REGISTRATION_OTP_RESEND_UNTIL_KEY = 'jaiz_registration_otp_resend_until';
 const SESSION_BACKGROUND_AT_KEY = 'jaiz_session_background_at';
+const TOKEN_CODE_KEY = 'jaiz_current_token_code';
+const TOKEN_EXPIRES_AT_KEY = 'jaiz_current_token_expires_at';
+const DEVICE_REGISTERED_AT_KEY = 'jaiz_device_registered_at';
+const DEVICE_LAST_USED_AT_KEY = 'jaiz_device_last_used_at';
+
+export interface StoredTokenState {
+  code: string;
+  expiresAt: number;
+}
 
 export interface AuthData {
   accessToken: string;
@@ -227,6 +236,74 @@ export const authStorage = {
     }
   },
 
+  async setTokenState(state: StoredTokenState): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(TOKEN_CODE_KEY, state.code);
+      await SecureStore.setItemAsync(TOKEN_EXPIRES_AT_KEY, String(state.expiresAt));
+    } catch (error) {
+      console.error('Error saving token countdown:', error);
+      throw error;
+    }
+  },
+
+  async getTokenState(): Promise<StoredTokenState | null> {
+    try {
+      const [code, expiresAtValue] = await Promise.all([
+        SecureStore.getItemAsync(TOKEN_CODE_KEY),
+        SecureStore.getItemAsync(TOKEN_EXPIRES_AT_KEY),
+      ]);
+      const expiresAt = expiresAtValue ? Number(expiresAtValue) : NaN;
+      if (!code || !Number.isFinite(expiresAt)) return null;
+      return { code, expiresAt };
+    } catch (error) {
+      console.error('Error restoring token countdown:', error);
+      return null;
+    }
+  },
+
+  async clearTokenState(): Promise<void> {
+    try {
+      await SecureStore.deleteItemAsync(TOKEN_CODE_KEY);
+      await SecureStore.deleteItemAsync(TOKEN_EXPIRES_AT_KEY);
+    } catch (error) {
+      console.error('Error clearing token countdown:', error);
+    }
+  },
+
+  async setDeviceRegisteredAt(timestamp: string): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(DEVICE_REGISTERED_AT_KEY, timestamp);
+    } catch (error) {
+      console.error('Error saving device registration time:', error);
+    }
+  },
+
+  async getDeviceRegisteredAt(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync(DEVICE_REGISTERED_AT_KEY);
+    } catch (error) {
+      console.error('Error reading device registration time:', error);
+      return null;
+    }
+  },
+
+  async setDeviceLastUsedAt(timestamp: string): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(DEVICE_LAST_USED_AT_KEY, timestamp);
+    } catch (error) {
+      console.error('Error saving device last-used time:', error);
+    }
+  },
+
+  async getDeviceLastUsedAt(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync(DEVICE_LAST_USED_AT_KEY);
+    } catch (error) {
+      console.error('Error reading device last-used time:', error);
+      return null;
+    }
+  },
+
   /**
    * Get all auth data
    */
@@ -273,6 +350,7 @@ export const authStorage = {
       }
       await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
       await SecureStore.deleteItemAsync(SESSION_BACKGROUND_AT_KEY);
+      await this.clearTokenState();
       // Keep USERNAME_KEY for convenience
     } catch (error) {
       console.error('Error clearing auth session:', error);
@@ -295,6 +373,9 @@ export const authStorage = {
       await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
       await SecureStore.deleteItemAsync(SESSION_BACKGROUND_AT_KEY);
       await SecureStore.deleteItemAsync(REGISTRATION_OTP_RESEND_UNTIL_KEY);
+      await this.clearTokenState();
+      await SecureStore.deleteItemAsync(DEVICE_REGISTERED_AT_KEY);
+      await SecureStore.deleteItemAsync(DEVICE_LAST_USED_AT_KEY);
     } catch (error) {
       console.error('Error clearing all data:', error);
       throw error;
