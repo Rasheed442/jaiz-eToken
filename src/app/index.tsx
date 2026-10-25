@@ -546,6 +546,11 @@ export default function HomeScreen() {
             setTransitionDirection("forward");
             setScreen("forgot-passcode");
           }}
+          onDeviceNotRegistered={(username: string) => {
+            setUsername(username);
+            setTransitionDirection("forward");
+            setScreen("register-device");
+          }}
           onOpenMetaMapPlayground={() => {
             setTransitionDirection("forward");
           }}

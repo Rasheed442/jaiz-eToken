@@ -29,6 +29,7 @@ type LoginScreenProps = {
   onGetStarted: () => void;
   onForgotPasscode: (username: string) => void;
   onOpenMetaMapPlayground?: () => void;
+  onDeviceNotRegistered?: (username: string) => void;
 };
 
 const PASSCODE_LENGTH = 6;
@@ -101,6 +102,31 @@ function getLoginFailureMessage(value: unknown): string {
   } catch {
     return "Login failed. Please try again.";
   }
+}
+
+function isDeviceNotRegisteredError(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+
+  const response = value as Record<string, unknown>;
+  const message = [
+    response.message,
+    response.errorMessage,
+    response.description,
+    response.errorDescription
+  ].find(
+    (item): item is string => typeof item === "string" && item.trim().length > 0
+  );
+
+  if (!message) return false;
+
+  const lowerMessage = message.toLowerCase();
+  return (
+    lowerMessage.includes("device") &&
+    (lowerMessage.includes("not registered") ||
+     lowerMessage.includes("unregistered") ||
+     lowerMessage.includes("not recognized") ||
+     lowerMessage.includes("unknown device"))
+  );
 }
 
 function PasscodeDots({ length, filled }: { length: number; filled: number }) {
@@ -205,7 +231,8 @@ export default function LoginScreen({
   onLogin,
   onGetStarted,
   onForgotPasscode,
-  onOpenMetaMapPlayground
+  onOpenMetaMapPlayground,
+  onDeviceNotRegistered
 }: LoginScreenProps) {
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -372,12 +399,30 @@ export default function LoginScreen({
         // Call onLogin callback to navigate to dashboard
         onLogin();
       } else {
-        setError(getLoginFailureMessage(response));
+        // Check if this is a device not registered error
+        if (isDeviceNotRegisteredError(response)) {
+          if (onDeviceNotRegistered) {
+            onDeviceNotRegistered(username.trim());
+          } else {
+            setError("This device is not registered. Please register it first.");
+          }
+        } else {
+          setError(getLoginFailureMessage(response));
+        }
         setPasscode("");
       }
     } catch (err: any) {
       console.error("Login failed:", err?.message ?? err);
-      setError(getLoginFailureMessage(err?.data ?? err));
+      // Check if this is a device not registered error
+      if (isDeviceNotRegisteredError(err?.data ?? err)) {
+        if (onDeviceNotRegistered) {
+          onDeviceNotRegistered(username.trim());
+        } else {
+          setError("This device is not registered. Please register it first.");
+        }
+      } else {
+        setError(getLoginFailureMessage(err?.data ?? err));
+      }
       setPasscode("");
     } finally {
       setIsLoading(false);
