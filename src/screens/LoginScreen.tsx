@@ -10,6 +10,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
   useWindowDimensions
 } from "react-native";
@@ -235,6 +236,8 @@ export default function LoginScreen({
   onDeviceNotRegistered
 }: LoginScreenProps) {
   const [passcode, setPasscode] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(username);
+  const [showPhoneField, setShowPhoneField] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEnablingBiometric, setIsEnablingBiometric] = useState(false);
@@ -253,6 +256,16 @@ export default function LoginScreen({
 
   useEffect(() => {
     let isMounted = true;
+
+    // Check if username is stored to determine if we should show phone field
+    const checkStoredUsername = async () => {
+      if (!isMounted) return;
+      const storedUsername = await authStorage.getUsername();
+      setShowPhoneField(!storedUsername || storedUsername.trim() === "");
+      if (storedUsername) {
+        setPhoneNumber(storedUsername);
+      }
+    };
 
     const checkBiometricSupport = async () => {
       try {
@@ -314,6 +327,7 @@ export default function LoginScreen({
       }
     };
 
+    void checkStoredUsername();
     void checkBiometricSupport();
     return () => {
       isMounted = false;
@@ -347,7 +361,8 @@ export default function LoginScreen({
   ) => {
     if (isLoading) return;
 
-    if (!username.trim()) {
+    const phoneToUse = showPhoneField ? phoneNumber : username;
+    if (!phoneToUse.trim()) {
       setError("Phone number is required");
       return;
     }
@@ -356,20 +371,33 @@ export default function LoginScreen({
     setError(null);
 
     try {
-      // Get device ID
-      let deviceId = "";
-      if (Platform.OS === "android") {
-        deviceId = Application.getAndroidId() || "";
-      } else if (Platform.OS === "ios") {
-        deviceId = (await Application.getIosIdForVendorAsync()) || "";
+      // Get device ID - check storage first, then generate if not present
+      let deviceId = await authStorage.getDeviceId();
+      if (!deviceId) {
+        if (Platform.OS === "android") {
+          deviceId = Application.getAndroidId() || "";
+        } else if (Platform.OS === "ios") {
+          deviceId = (await Application.getIosIdForVendorAsync()) || "";
+        }
+        // Store the device ID for future use
+        if (deviceId) {
+          await authStorage.setAuthData({
+            accessToken: await authStorage.getAccessToken() || "",
+            refreshToken: await authStorage.getRefreshToken() || "",
+            username: phoneToUse,
+            customerName: await authStorage.getCustomerName() || "",
+            accountNumber: await authStorage.getAccountNumber() || "",
+            deviceId,
+          });
+        }
       }
 
-      const deviceFingerprint = "sha256_" + deviceId;
+      const deviceFingerprint = "sha256_" + (deviceId || "unknown");
 
       const payload = {
-        phoneNumber: username.trim(),
+        phoneNumber: phoneToUse.trim(),
         passcode: passcodeToSubmit,
-        deviceId,
+        deviceId: deviceId || "unknown",
         deviceFingerprint,
         useBiometric
       };
@@ -387,7 +415,7 @@ export default function LoginScreen({
           customerName: response.data.customerName,
           accountNumber: response.data.accountNumber,
           passcode: passcodeToSubmit,
-          deviceId
+          deviceId: deviceId || undefined
         });
 
         // Remember username
@@ -402,7 +430,7 @@ export default function LoginScreen({
         // Check if this is a device not registered error
         if (isDeviceNotRegisteredError(response)) {
           if (onDeviceNotRegistered) {
-            onDeviceNotRegistered(username.trim());
+            onDeviceNotRegistered(phoneToUse.trim());
           } else {
             setError("This device is not registered. Please register it first.");
           }
@@ -416,7 +444,7 @@ export default function LoginScreen({
       // Check if this is a device not registered error
       if (isDeviceNotRegisteredError(err?.data ?? err)) {
         if (onDeviceNotRegistered) {
-          onDeviceNotRegistered(username.trim());
+          onDeviceNotRegistered(phoneToUse.trim());
         } else {
           setError("This device is not registered. Please register it first.");
         }
@@ -637,9 +665,36 @@ export default function LoginScreen({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {showPhoneField && (
+          <>
+            <Text className="text-[14px] font-outfit-normal text-[#6B7280]">
+              Phone number
+            </Text>
+            <View
+              className="mt-2 flex-row items-start rounded-2xl border-2 px-4 py-3"
+              style={{
+                borderColor: "#D9E2EC",
+                backgroundColor: "#F8F9FB"
+              }}
+            >
+              <TextInput
+                className="flex-1 text-[16px] font-outfit-medium text-[#102F62]"
+                placeholder=""
+                placeholderTextColor="#9CA3AF"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                keyboardType="phone-pad"
+                maxLength={15}
+                textAlign="left"
+              />
+            </View>
+          </>
+        )}
+
         <Text className="text-center text-[21px] font-outfit-semibold text-[#102F62]">
-          Enter your passcode
+          {!showPhoneField && "Enter your passcode"}
         </Text>
+
         <PasscodeDots length={PASSCODE_LENGTH} filled={passcode.length} />
 
         {error && (

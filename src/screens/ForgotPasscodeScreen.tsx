@@ -26,7 +26,7 @@ import { registrationApi } from "../lib/api";
 
 const PASSCODE_LENGTH = 6;
 const OTP_LENGTH = 6;
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 function getQuestionText(value: unknown): string | null {
   if (typeof value === "string" && value.trim()) return value.trim();
@@ -73,7 +73,7 @@ function extractSecurityQuestions(response: unknown): string[] {
   return findQuestions(response);
 }
 
-type Step = 1 | 2 | 3; // 1: account verification, 2: security questions, 3: reset passcode
+type Step = 1 | 2 | 3 | 4; // 1: account verification, 2: security questions, 3: verify OTP, 4: set new passcode
 
 type ForgotPasscodeScreenProps = {
   onBack: () => void;
@@ -92,8 +92,12 @@ const STEP_CONTENT: Record<Step, { title: string; subtitle: string }> = {
     subtitle: "Use the answers you set up when you created your account."
   },
   3: {
+    title: "Verify your identity",
+    subtitle: "Enter the 6-digit code we sent to verify it's you."
+  },
+  4: {
     title: "Create a new passcode",
-    subtitle: "Enter the 6-digit code we sent you, then choose a new passcode."
+    subtitle: "Choose a secure 6-digit passcode for your account."
   }
 };
 
@@ -316,6 +320,12 @@ export default function ForgotPasscodeScreen({
       setError("Enter the 6-digit verification code.");
       return;
     }
+
+    // Move to passcode entry step
+    setCurrentStep(4);
+  };
+
+  const handleStep4Submit = async () => {
     if (newPasscode.length !== PASSCODE_LENGTH) {
       setError("Your new passcode must be 6 digits.");
       return;
@@ -355,16 +365,18 @@ export default function ForgotPasscodeScreen({
   const handlers: Record<Step, () => void> = {
     1: handleStep1Submit,
     2: handleStep2Submit,
-    3: handleStep3Submit
+    3: handleStep3Submit,
+    4: handleStep4Submit
   };
 
   const ctaLabel = {
     1: { idle: "Continue", busy: "Verifying..." },
     2: { idle: "Continue", busy: "Verifying..." },
-    3: { idle: "Reset passcode", busy: "Resetting..." }
+    3: { idle: "Verify", busy: "Verifying..." },
+    4: { idle: "Reset passcode", busy: "Resetting..." }
   }[currentStep];
 
-  const Icon = currentStep === 2 ? ShieldCheck : Lock;
+  const Icon = currentStep === 2 || currentStep === 3 ? ShieldCheck : Lock;
   const { title, subtitle } = STEP_CONTENT[currentStep];
 
   const clearError = () => error && setError(null);
@@ -431,13 +443,13 @@ export default function ForgotPasscodeScreen({
           {currentStep === 1 && (
             <View className="mt-8 gap-5">
               <Field
-                label="Username"
+                label="Phonenumber"
                 value={username}
                 onChangeText={(t) => {
                   clearError();
                   setUsername(t);
                 }}
-                placeholder="Enter your username"
+                placeholder="Enter your phonenumber"
                 autoCapitalize="none"
                 autoCorrect={false}
                 textContentType="username"
@@ -490,9 +502,12 @@ export default function ForgotPasscodeScreen({
                   setOtp(v);
                 }}
               />
+            </View>
+          )}
 
-              <View className="h-px bg-[#E3E8EE]" />
-
+          {/* Step 4 */}
+          {currentStep === 4 && (
+            <View className="mt-8 gap-6">
               <Field
                 label="New passcode"
                 value={newPasscode}

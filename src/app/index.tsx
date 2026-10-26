@@ -659,7 +659,13 @@ export default function HomeScreen() {
           <RegisterDeviceScreen
             onBack={() => {
               setTransitionDirection("backward");
-              setScreen("device-details");
+              // If user is not authenticated, go back to login
+              // Otherwise go to device-details (from dashboard)
+              if (!isAuthenticated) {
+                setScreen("login");
+              } else {
+                setScreen("device-details");
+              }
             }}
             onRegisterComplete={() => {
               setTransitionDirection("forward");
