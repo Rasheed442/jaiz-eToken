@@ -8,7 +8,7 @@
     "scheme": "jaiz",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/ios-icon.png",
       "infoPlist": {
         "NSFaceIDUsageDescription": "Allow Jaiz eToken to use Face ID to securely sign you in.",
         "NSCameraUsageDescription": "This app needs camera access to verify your identity for secure transactions.",
