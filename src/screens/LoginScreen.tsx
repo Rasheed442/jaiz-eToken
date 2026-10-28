@@ -5,6 +5,7 @@ import { requireOptionalNativeModule } from "expo-modules-core";
 import { Delete, Fingerprint } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
+  BackHandler,
   Image,
   Platform,
   Pressable,
@@ -31,6 +32,7 @@ type LoginScreenProps = {
   onForgotPasscode: (username: string) => void;
   onOpenMetaMapPlayground?: () => void;
   onDeviceNotRegistered?: (username: string) => void;
+  onDeviceChangeFlow?: (phoneNumber: string) => void;
 };
 
 const PASSCODE_LENGTH = 6;
@@ -105,28 +107,45 @@ function getLoginFailureMessage(value: unknown): string {
   }
 }
 
+function safeStringify(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Detects the "device not registered / device conflict" error wherever the
+ * backend or API client puts it: top-level code or message, nested `data`,
+ * `response.data`, an Error's message, or a plain string.
+ */
 function isDeviceNotRegisteredError(value: unknown): boolean {
-  if (!value || typeof value !== "object") return false;
+  const source = value as
+    | { message?: unknown; data?: unknown; response?: { data?: unknown } }
+    | null
+    | undefined;
 
-  const response = value as Record<string, unknown>;
-  const message = [
-    response.message,
-    response.errorMessage,
-    response.description,
-    response.errorDescription
-  ].find(
-    (item): item is string => typeof item === "string" && item.trim().length > 0
-  );
+  const text = [
+    safeStringify(value),
+    typeof source?.message === "string" ? source.message : "",
+    safeStringify(source?.data),
+    safeStringify(source?.response?.data)
+  ].join(" ");
 
-  if (!message) return false;
+  if (!text.trim()) return false;
 
-  const lowerMessage = message.toLowerCase();
+  // Error codes, e.g. DEVICE_NOT_REGISTERED / DEVICE_CONFLICT
+  if (/DEVICE[_\s-]?(NOT[_\s-]?REGISTERED|CONFLICT)/i.test(text)) return true;
+
+  // Human-readable messages
   return (
-    lowerMessage.includes("device") &&
-    (lowerMessage.includes("not registered") ||
-     lowerMessage.includes("unregistered") ||
-     lowerMessage.includes("not recognized") ||
-     lowerMessage.includes("unknown device"))
+    /device/i.test(text) &&
+    /(not registered|unregistered|not recognized|unknown device|another device|linked to another)/i.test(
+      text
+    )
   );
 }
 
@@ -233,7 +252,8 @@ export default function LoginScreen({
   onGetStarted,
   onForgotPasscode,
   onOpenMetaMapPlayground,
-  onDeviceNotRegistered
+  onDeviceNotRegistered,
+  onDeviceChangeFlow
 }: LoginScreenProps) {
   const [passcode, setPasscode] = useState("");
   const [phoneNumber, setPhoneNumber] = useState(username);
@@ -248,6 +268,9 @@ export default function LoginScreen({
   const [localAuthentication, setLocalAuthentication] = useState<
     typeof import("expo-local-authentication") | null
   >(null);
+  const [showDeviceConflictModal, setShowDeviceConflictModal] = useState(false);
+  const [deviceConflictPhoneNumber, setDeviceConflictPhoneNumber] = useState("");
+  const [isInitiatingDeviceChange, setIsInitiatingDeviceChange] = useState(false);
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const compact = screenHeight < 760;
@@ -334,11 +357,29 @@ export default function LoginScreen({
     };
   }, []);
 
+  // Android back button closes the device-conflict prompt instead of leaving the screen
+  useEffect(() => {
+    if (!showDeviceConflictModal) return;
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      setShowDeviceConflictModal(false);
+      setDeviceConflictPhoneNumber("");
+      return true;
+    });
+    return () => subscription.remove();
+  }, [showDeviceConflictModal]);
+
   const nameParts = customerName.trim().split(/\s+/).filter(Boolean);
   const initial =
     nameParts.length > 1
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
       : nameParts[0]?.[0]?.toUpperCase() || "J";
+
+  const showDeviceConflict = (phone: string) => {
+    setDeviceConflictPhoneNumber(phone);
+    setShowDeviceConflictModal(true);
+    setPasscode("");
+    setError(null);
+  };
 
   const handleDigitPress = async (digit: string) => {
     if (passcode.length >= PASSCODE_LENGTH) return;
@@ -382,12 +423,12 @@ export default function LoginScreen({
         // Store the device ID for future use
         if (deviceId) {
           await authStorage.setAuthData({
-            accessToken: await authStorage.getAccessToken() || "",
-            refreshToken: await authStorage.getRefreshToken() || "",
+            accessToken: (await authStorage.getAccessToken()) || "",
+            refreshToken: (await authStorage.getRefreshToken()) || "",
             username: phoneToUse,
-            customerName: await authStorage.getCustomerName() || "",
-            accountNumber: await authStorage.getAccountNumber() || "",
-            deviceId,
+            customerName: (await authStorage.getCustomerName()) || "",
+            accountNumber: (await authStorage.getAccountNumber()) || "",
+            deviceId
           });
         }
       }
@@ -427,31 +468,24 @@ export default function LoginScreen({
         // Call onLogin callback to navigate to dashboard
         onLogin();
       } else {
-        // Check if this is a device not registered error
+        console.log("Login response:", safeStringify(response));
         if (isDeviceNotRegisteredError(response)) {
-          if (onDeviceNotRegistered) {
-            onDeviceNotRegistered(phoneToUse.trim());
-          } else {
-            setError("This device is not registered. Please register it first.");
-          }
+          showDeviceConflict(phoneToUse.trim());
         } else {
           setError(getLoginFailureMessage(response));
+          setPasscode("");
         }
-        setPasscode("");
       }
     } catch (err: any) {
       console.error("Login failed:", err?.message ?? err);
-      // Check if this is a device not registered error
-      if (isDeviceNotRegisteredError(err?.data ?? err)) {
-        if (onDeviceNotRegistered) {
-          onDeviceNotRegistered(phoneToUse.trim());
-        } else {
-          setError("This device is not registered. Please register it first.");
-        }
+      console.error("Login error data:", safeStringify(err?.data ?? err));
+
+      if (isDeviceNotRegisteredError(err)) {
+        showDeviceConflict(phoneToUse.trim());
       } else {
         setError(getLoginFailureMessage(err?.data ?? err));
+        setPasscode("");
       }
-      setPasscode("");
     } finally {
       setIsLoading(false);
     }
@@ -547,6 +581,58 @@ export default function LoginScreen({
     setPasscode((prev) => prev.slice(0, -1));
   };
 
+  const handleDeviceConflictYes = async () => {
+    if (!deviceConflictPhoneNumber || isInitiatingDeviceChange) return;
+
+    const phone = deviceConflictPhoneNumber;
+    setIsInitiatingDeviceChange(true);
+    setShowDeviceConflictModal(false);
+    setError(null);
+
+    try {
+      const response = await registrationApi.revokeDevice({
+        phoneNumber: phone
+      });
+
+      if (!response.success) {
+        setError(response.message || "Could not revoke device. Please try again.");
+        return;
+      }
+
+      await authStorage.clearTotpCredentials();
+      await authStorage.clearAuthSession();
+
+      const initiateResponse = await registrationApi.initiateDeviceChange(phone);
+
+      if (!initiateResponse.success) {
+        setError(initiateResponse.message || "Could not initiate device change. Please try again.");
+        return;
+      }
+
+      if (onDeviceChangeFlow) {
+        onDeviceChangeFlow(phone);
+      } else {
+        console.error("onDeviceChangeFlow callback is not defined");
+      }
+    } catch (err: any) {
+      console.error("Device change error:", err);
+      setError(err?.message || "Device change failed. Please try again.");
+    } finally {
+      setIsInitiatingDeviceChange(false);
+    }
+  };
+
+  const handleDeviceConflictNo = () => {
+    setShowDeviceConflictModal(false);
+    // Ensure phone number is set for login when modal is dismissed
+    if (deviceConflictPhoneNumber) {
+      setPhoneNumber(deviceConflictPhoneNumber);
+      setShowPhoneField(true);
+    }
+    setDeviceConflictPhoneNumber("");
+    setError(null);
+  };
+
   const keypadRows = [
     ["1", "2", "3"],
     ["4", "5", "6"],
@@ -577,34 +663,8 @@ export default function LoginScreen({
             right: 0,
             bottom: 0,
             left: 0
-            // opacity: 0.2
           }}
         />
-        {/* Soft decorative rings, behind the content */}
-        {/* <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: -headerHeight * 0.35,
-            right: -headerHeight * 0.3,
-            width: headerHeight * 0.95,
-            height: headerHeight * 0.95,
-            borderRadius: headerHeight,
-            backgroundColor: "rgba(255,255,255,0.06)"
-          }}
-        />
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            bottom: -headerHeight * 0.4,
-            left: -headerHeight * 0.25,
-            width: headerHeight * 0.8,
-            height: headerHeight * 0.8,
-            borderRadius: headerHeight,
-            backgroundColor: "rgba(255,185,0,0.08)"
-          }}
-        /> */}
 
         <View className="w-full max-w-[520px] items-center">
           {/* Avatar with translucent halo */}
@@ -798,21 +858,72 @@ export default function LoginScreen({
             Set up another account
           </Text>
         </Pressable>
-
-        {/* {__DEV__ && onOpenMetaMapPlayground ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onOpenMetaMapPlayground}
-            className="mt-4 items-center py-2 active:opacity-70"
-          >
-            <Text className="text-[14px] font-outfit-medium text-[#67787F]">
-              MetaMap playground
-            </Text>
-          </Pressable>
-        ) : null} */}
       </ScrollView>
 
-      <LoadingOverlay visible={isLoading} />
+      <LoadingOverlay visible={isLoading || isInitiatingDeviceChange} />
+
+      {/*
+        Device conflict prompt.
+        Rendered as an in-tree overlay instead of a native <Modal>. LoadingOverlay
+        is hidden in the same tick the error arrives, and a native modal that tries
+        to present while another is dismissing is silently dropped (notably on iOS).
+      */}
+      {showDeviceConflictModal && (
+        <View
+          accessibilityViewIsModal
+          className="items-center justify-center bg-black/50 px-6"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1000,
+            elevation: 20
+          }}
+        >
+          <View
+            className="w-full max-w-sm rounded-3xl bg-white p-6"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 24
+            }}
+          >
+            <Text className="text-center text-[22px] font-outfit-semibold text-[#1B2D4A]">
+              Device Conflict
+            </Text>
+
+            <Text className="mt-3 text-center text-[15px] font-outfit text-[#67787F] leading-[22px]">
+              Your account is linked to another device. Do you want to change device?
+            </Text>
+
+            <View className="mt-6 flex-row gap-3">
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleDeviceConflictNo}
+                className="flex-1 h-12 flex-row items-center justify-center rounded-2xl border border-[#DDE3EA] bg-white active:opacity-70"
+              >
+                <Text className="text-[17px] font-outfit-semibold text-[#1B2D4A]">
+                  No
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleDeviceConflictYes}
+                className="flex-1 h-12 flex-row items-center justify-center rounded-2xl bg-[#123E7C] active:opacity-85"
+              >
+                <Text className="text-[17px] font-outfit-semibold text-white">
+                  Yes
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

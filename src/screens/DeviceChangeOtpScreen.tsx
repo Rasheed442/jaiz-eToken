@@ -1,0 +1,176 @@
+import { AlertCircle, ChevronLeft, ShieldCheck } from "lucide-react-native";
+import { useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const OTP_LENGTH = 6;
+
+type DeviceChangeOtpScreenProps = {
+  onBack: () => void;
+  onNext: (otp: string) => void;
+  phoneNumber: string;
+};
+
+function OtpInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const inputRef = useRef<TextInput>(null);
+
+  return (
+    <View>
+      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A]">
+        Verification code
+      </Text>
+      <Pressable onPress={() => inputRef.current?.focus()}>
+        <View className="flex-row justify-between">
+          {Array.from({ length: OTP_LENGTH }).map((_, i) => {
+            const isActive = i === value.length;
+            return (
+              <View
+                key={i}
+                className={`h-14 w-[46px] items-center justify-center rounded-xl border bg-white ${
+                  isActive ? "border-[#123E7C]" : "border-[#DDE3EA]"
+                }`}
+              >
+                <Text className="text-[22px] font-outfit-semibold text-[#1B2D4A]">
+                  {value[i] ?? ""}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+        <TextInput
+          ref={inputRef}
+          value={value}
+          onChangeText={(t) => onChange(t.replace(/\D/g, "").slice(0, OTP_LENGTH))}
+          keyboardType="number-pad"
+          textContentType="oneTimeCode"
+          autoComplete="sms-otp"
+          maxLength={OTP_LENGTH}
+          caretHidden
+          accessibilityLabel="Verification code"
+          style={{ position: "absolute", width: "100%", height: "100%", opacity: 0.02 }}
+        />
+      </Pressable>
+    </View>
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <View
+      accessibilityRole="alert"
+      className="mt-5 flex-row items-start rounded-xl border border-[#F0B4B4] bg-[#FDECEC] px-4 py-3"
+    >
+      <AlertCircle size={18} color="#B3261E" style={{ marginTop: 1 }} />
+      <Text className="ml-2.5 flex-1 text-[13px] leading-[18px] font-outfit-medium text-[#B3261E]">
+        {message}
+      </Text>
+    </View>
+  );
+}
+
+export default function DeviceChangeOtpScreen({
+  onBack,
+  onNext,
+  phoneNumber
+}: DeviceChangeOtpScreenProps) {
+  const [otp, setOtp] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (otp.length !== OTP_LENGTH) {
+      setError("Enter the 6-digit verification code.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      onNext(otp);
+    } catch (err: any) {
+      setError(err?.message || "Verification failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearError = () => error && setError(null);
+
+  return (
+    <SafeAreaView className="flex-1 bg-[#F6F8FA]">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View className="flex-row items-center px-6 pt-4">
+          <Pressable
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            className="h-10 w-10 items-center justify-center rounded-full border border-[#DDE3EA] bg-white active:opacity-70"
+            onPress={onBack}
+          >
+            <ChevronLeft size={22} color="#1B2D4A" />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7]">
+            <ShieldCheck size={24} color="#123E7C" />
+          </View>
+          <Text className="mt-5 text-[26px] leading-[32px] font-outfit-semibold text-[#1B2D4A]">
+            Verify your identity
+          </Text>
+          <Text className="mt-2 text-[15px] leading-[22px] font-outfit text-[#67787F]">
+            Enter the 6-digit code sent to {phoneNumber} to verify your device change request.
+          </Text>
+
+          <View className="mt-8 gap-6">
+            <OtpInput
+              value={otp}
+              onChange={(v) => {
+                clearError();
+                setOtp(v);
+              }}
+            />
+          </View>
+
+          {error && <ErrorBanner message={error} />}
+        </ScrollView>
+
+        <View className="border-t border-[#E3E8EE] px-6 pb-4 pt-4">
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleSubmit}
+            disabled={isLoading}
+            className={`h-14 flex-row items-center justify-center rounded-2xl bg-[#123E7C] active:opacity-85 ${
+              isLoading ? "opacity-70" : ""
+            }`}
+          >
+            {isLoading && <ActivityIndicator size="small" color="#FFFFFF" />}
+            <Text
+              className={`text-[17px] font-outfit-semibold text-white ${isLoading ? "ml-3" : ""}`}
+            >
+              {isLoading ? "Verifying..." : "Continue"}
+            </Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}

@@ -12,6 +12,8 @@ import AnimatedSplashScreen from "@/screens/AnimatedSplashScreen";
 import CorporateRegistrationScreen from "@/screens/CorporateRegistrationScreen";
 import CreateProfileScreen from "@/screens/CreateProfileScreen";
 import DeregisterDeviceScreen from "@/screens/DeregisterDeviceScreen";
+import DeviceChangeDetailsScreen from "@/screens/DeviceChangeDetailsScreen";
+import DeviceChangeOtpScreen from "@/screens/DeviceChangeOtpScreen";
 import DeviceDeregisteredScreen from "@/screens/Devicederegisteredscreen";
 import DeviceDetailsScreen from "@/screens/Devicedetails";
 import DeviceRegisteredScreen from "@/screens/DeviceregisteredScreen";
@@ -50,6 +52,8 @@ type Screen =
   | "device-registered"
   | "deregister-device"
   | "device-deregistered"
+  | "device-change-otp"
+  | "device-change-details"
   | "animated-splash";
 type TransitionDirection = "forward" | "backward";
 
@@ -97,6 +101,8 @@ export default function HomeScreen() {
   const [deregisterDeviceError, setDeregisterDeviceError] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasSplashCompleted, setHasSplashCompleted] = useState(false);
+  const [deviceChangePhoneNumber, setDeviceChangePhoneNumber] = useState("");
+  const [deviceChangeOtp, setDeviceChangeOtp] = useState("");
   const lastActivityAt = useRef(Date.now());
   const backgroundedAt = useRef<number | null>(null);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -308,7 +314,7 @@ export default function HomeScreen() {
       }
 
       const response = await registrationApi.revokeDevice({
-        username: activePhoneNumber
+        phoneNumber: activePhoneNumber
       });
 
       if (!response.success) {
@@ -321,8 +327,20 @@ export default function HomeScreen() {
       await authStorage.clearTotpCredentials();
       await authStorage.clearAuthSession();
       setIsAuthenticated(false);
+
+      setDeviceChangePhoneNumber(activePhoneNumber);
+
+      const initiateResponse = await registrationApi.initiateDeviceChange(activePhoneNumber);
+
+      if (!initiateResponse.success) {
+        setDeregisterDeviceError(
+          initiateResponse.message || "Could not initiate device change. Please try again."
+        );
+        return;
+      }
+
       setTransitionDirection("forward");
-      setScreen("device-deregistered");
+      setScreen("device-change-otp");
     } catch (error: any) {
       setDeregisterDeviceError(
         error?.message || "Could not deregister this device. Please try again."
@@ -551,6 +569,11 @@ export default function HomeScreen() {
             setTransitionDirection("forward");
             setScreen("register-device");
           }}
+          onDeviceChangeFlow={(phoneNumber: string) => {
+            setDeviceChangePhoneNumber(phoneNumber);
+            setTransitionDirection("forward");
+            setScreen("device-change-otp");
+          }}
           onOpenMetaMapPlayground={() => {
             setTransitionDirection("forward");
           }}
@@ -646,6 +669,44 @@ export default function HomeScreen() {
             }}
             onDone={() => {
               setTransitionDirection("backward");
+              setScreen("welcome");
+            }}
+          />
+        </View>
+      );
+    }
+
+    if (screen === "device-change-otp") {
+      return (
+        <View className="flex-1 bg-[#F6F8FA]">
+          <DeviceChangeOtpScreen
+            phoneNumber={deviceChangePhoneNumber}
+            onBack={() => {
+              setTransitionDirection("backward");
+              setScreen("welcome");
+            }}
+            onNext={(otp) => {
+              setDeviceChangeOtp(otp);
+              setTransitionDirection("forward");
+              setScreen("device-change-details");
+            }}
+          />
+        </View>
+      );
+    }
+
+    if (screen === "device-change-details") {
+      return (
+        <View className="flex-1 bg-[#F6F8FA]">
+          <DeviceChangeDetailsScreen
+            phoneNumber={deviceChangePhoneNumber}
+            otp={deviceChangeOtp}
+            onBack={() => {
+              setTransitionDirection("backward");
+              setScreen("device-change-otp");
+            }}
+            onComplete={() => {
+              setTransitionDirection("forward");
               setScreen("welcome");
             }}
           />

@@ -12,12 +12,16 @@ import type {
     BvnVerificationResponse,
     CreateProfileRequest,
     CreateProfileResponse,
+    DeviceChangeRequest,
+    DeviceChangeResponse,
     DeviceRegistrationRequest,
     DeviceRegistrationResponse,
     ForgotPasscodeRequest,
     ForgotPasscodeResponse,
     GenerateTokenRequest,
     GenerateTokenResponse,
+    InitiateDeviceChangeRequest,
+    InitiateDeviceChangeResponse,
     InitiateRegistrationRequest,
     InitiateRegistrationResponse,
     ConfirmLivelinessRequest,
@@ -205,9 +209,14 @@ export const registrationApi = {
     );
   },
 
-  /** Revoke the device using the account phone number as username. */
+  /** Revoke the device using the account phone number. */
   async revokeDevice(data: RevokeDeviceRequest): Promise<LogoutResponse> {
     return apiClient.post<LogoutResponse>('device/revoke', data);
+  },
+
+  /** Revoke device registration for login flow. */
+  async revokeDeviceRegistration(data: RevokeDeviceRequest): Promise<LogoutResponse> {
+    return apiClient.post<LogoutResponse>('register/device/revoke', data);
   },
 
   /**
@@ -321,6 +330,32 @@ export const registrationApi = {
   ): Promise<GenerateTokenResponse> {
     return apiClient.post<GenerateTokenResponse>(
       'token/generate',
+      data
+    );
+  },
+
+  /**
+   * Initiate Device Change
+   * POST api/v1/device/change/initiate/{phoneNumber}
+   */
+  async initiateDeviceChange(
+    phoneNumber: string
+  ): Promise<InitiateDeviceChangeResponse> {
+    return apiClient.post<InitiateDeviceChangeResponse>(
+      `device/change/initiate/${phoneNumber}`,
+      {}
+    );
+  },
+
+  /**
+   * Complete Device Change
+   * POST api/v1/device/change
+   */
+  async changeDevice(
+    data: DeviceChangeRequest
+  ): Promise<DeviceChangeResponse> {
+    return apiClient.post<DeviceChangeResponse>(
+      'device/change',
       data
     );
   },

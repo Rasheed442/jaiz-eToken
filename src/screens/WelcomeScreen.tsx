@@ -267,7 +267,7 @@ export default function WelcomeScreen({
             className={`${compact ? "h-12" : "h-14"} flex-row items-center justify-center rounded-2xl bg-[#064783] active:opacity-80`}
           >
             <Text className="text-[16px] font-outfit-semibold text-white">
-              Continue
+              Register
             </Text>
             <View className="ml-2">
               <ArrowRight size={19} color="#FFB900" strokeWidth={2.5} />

@@ -762,9 +762,9 @@ export interface LogoutRequest {
   username: string;
 }
 
-/** Revoke a device using the account phone number in the username field. */
+/** Revoke a device using the account phone number. */
 export interface RevokeDeviceRequest {
-  username: string;
+  phoneNumber: string;
 }
 
 /**
@@ -832,3 +832,73 @@ export interface GenerateTokenErrorResponse {
  */
 export type GenerateTokenResponse =
   GenerateTokenSuccessResponse | GenerateTokenErrorResponse;
+
+/**
+ * Initiate Device Change Request
+ */
+export interface InitiateDeviceChangeRequest {
+  phoneNumber: string;
+}
+
+/**
+ * Initiate Device Change Response (Success)
+ */
+export interface InitiateDeviceChangeSuccessResponse {
+  success: true;
+  message: string;
+  timestamp: string;
+}
+
+/**
+ * Initiate Device Change Response (Error)
+ */
+export interface InitiateDeviceChangeErrorResponse {
+  success: false;
+  message: string;
+  errorCode?: string;
+  timestamp: string;
+}
+
+/**
+ * Initiate Device Change Response (Union)
+ */
+export type InitiateDeviceChangeResponse =
+  InitiateDeviceChangeSuccessResponse | InitiateDeviceChangeErrorResponse;
+
+/**
+ * Device Change Request
+ */
+export interface DeviceChangeRequest {
+  username: string;
+  passcode: string;
+  newDeviceId: string;
+  newDeviceFingerprint: string;
+  newDeviceModel: string;
+  newOsVersion: string;
+  otp: string;
+}
+
+/**
+ * Device Change Response (Success)
+ */
+export interface DeviceChangeSuccessResponse {
+  success: true;
+  message: string;
+  timestamp: string;
+}
+
+/**
+ * Device Change Response (Error)
+ */
+export interface DeviceChangeErrorResponse {
+  success: false;
+  message: string;
+  errorCode?: string;
+  timestamp: string;
+}
+
+/**
+ * Device Change Response (Union)
+ */
+export type DeviceChangeResponse =
+  DeviceChangeSuccessResponse | DeviceChangeErrorResponse;

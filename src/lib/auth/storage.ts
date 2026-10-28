@@ -5,7 +5,7 @@
  */
 
 import * as SecureStore from 'expo-secure-store';
-import type { TotpCredentials } from './totp';
+import { normalizeTotpCredentials, type TotpCredentials } from './totp';
 
 const ACCESS_TOKEN_KEY = 'jaiz_access_token';
 const REFRESH_TOKEN_KEY = 'jaiz_refresh_token';
@@ -38,10 +38,55 @@ export interface AuthData {
   deviceId?: string;
 }
 
+/* ---------- internal helpers ---------- */
+
+async function readString(key: string, label: string): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch (error) {
+    console.error(`Error getting ${label}:`, error);
+    return null;
+  }
+}
+
+async function readNumber(key: string, label: string): Promise<number | null> {
+  const value = await readString(key, label);
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function writeString(
+  key: string,
+  value: string,
+  label: string,
+  rethrow = false
+): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(key, value);
+  } catch (error) {
+    console.error(`Error saving ${label}:`, error);
+    if (rethrow) throw error;
+  }
+}
+
+async function removeKey(
+  key: string,
+  label: string,
+  rethrow = false
+): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch (error) {
+    console.error(`Error clearing ${label}:`, error);
+    if (rethrow) throw error;
+  }
+}
+
+/* ---------- public API ---------- */
+
 export const authStorage = {
-  /**
-   * Store authentication data
-   */
+  /** Store authentication data */
   async setAuthData(data: AuthData): Promise<void> {
     try {
       await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, data.accessToken);
@@ -61,187 +106,71 @@ export const authStorage = {
     }
   },
 
-  /**
-   * Get access token
-   */
-  async getAccessToken(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-    } catch (error) {
-      console.error('Error getting access token:', error);
-      return null;
-    }
-  },
+  getAccessToken: () => readString(ACCESS_TOKEN_KEY, 'access token'),
+  getRefreshToken: () => readString(REFRESH_TOKEN_KEY, 'refresh token'),
+  /** Username (for remembering user on login screen) */
+  getUsername: () => readString(USERNAME_KEY, 'username'),
+  getCustomerName: () => readString(CUSTOMER_NAME_KEY, 'customer name'),
+  getAccountNumber: () => readString(ACCOUNT_NUMBER_KEY, 'account number'),
+  getPasscode: () => readString(PASSCODE_KEY, 'passcode'),
+  getDeviceId: () => readString(DEVICE_ID_KEY, 'device ID'),
 
-  /**
-   * Get refresh token
-   */
-  async getRefreshToken(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-    } catch (error) {
-      console.error('Error getting refresh token:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Get username (for remembering user on login screen)
-   */
-  async getUsername(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(USERNAME_KEY);
-    } catch (error) {
-      console.error('Error getting username:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Get customer name
-   */
-  async getCustomerName(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(CUSTOMER_NAME_KEY);
-    } catch (error) {
-      console.error('Error getting customer name:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Get account number
-   */
-  async getAccountNumber(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(ACCOUNT_NUMBER_KEY);
-    } catch (error) {
-      console.error('Error getting account number:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Get passcode
-   */
-  async getPasscode(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(PASSCODE_KEY);
-    } catch (error) {
-      console.error('Error getting passcode:', error);
-      return null;
-    }
-  },
-
-  async clearPasscode(): Promise<void> {
-    try {
-      await SecureStore.deleteItemAsync(PASSCODE_KEY);
-    } catch (error) {
-      console.error('Error clearing passcode:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get device ID
-   */
-  async getDeviceId(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(DEVICE_ID_KEY);
-    } catch (error) {
-      console.error('Error getting device ID:', error);
-      return null;
-    }
-  },
+  clearPasscode: () => removeKey(PASSCODE_KEY, 'passcode', true),
 
   async getBiometricEnabled(): Promise<boolean> {
-    try {
-      return (await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY)) === 'true';
-    } catch (error) {
-      console.error('Error getting biometric preference:', error);
-      return false;
-    }
-  },
-
-  async getRegistrationOtpResendUntil(): Promise<number | null> {
-    try {
-      const storedDeadline = await SecureStore.getItemAsync(
-        REGISTRATION_OTP_RESEND_UNTIL_KEY
-      );
-      const deadline = storedDeadline ? Number(storedDeadline) : NaN;
-      return Number.isFinite(deadline) ? deadline : null;
-    } catch (error) {
-      console.error('Error getting OTP resend deadline:', error);
-      return null;
-    }
-  },
-
-  async setRegistrationOtpResendUntil(deadline: number): Promise<void> {
-    try {
-      await SecureStore.setItemAsync(
-        REGISTRATION_OTP_RESEND_UNTIL_KEY,
-        String(deadline)
-      );
-    } catch (error) {
-      console.error('Error saving OTP resend deadline:', error);
-      throw error;
-    }
-  },
-
-  async clearRegistrationOtpResendUntil(): Promise<void> {
-    try {
-      await SecureStore.deleteItemAsync(REGISTRATION_OTP_RESEND_UNTIL_KEY);
-    } catch (error) {
-      console.error('Error clearing OTP resend deadline:', error);
-      throw error;
-    }
+    return (
+      (await readString(BIOMETRIC_ENABLED_KEY, 'biometric preference')) ===
+      'true'
+    );
   },
 
   async setBiometricEnabled(enabled: boolean): Promise<void> {
-    try {
-      if (enabled) {
-        await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
-      } else {
-        await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
-      }
-    } catch (error) {
-      console.error('Error saving biometric preference:', error);
-      throw error;
+    if (enabled) {
+      await writeString(
+        BIOMETRIC_ENABLED_KEY,
+        'true',
+        'biometric preference',
+        true
+      );
+    } else {
+      await removeKey(BIOMETRIC_ENABLED_KEY, 'biometric preference', true);
     }
   },
 
-  async setSessionBackgroundedAt(timestamp: number): Promise<void> {
-    try {
-      await SecureStore.setItemAsync(SESSION_BACKGROUND_AT_KEY, String(timestamp));
-    } catch (error) {
-      console.error('Error saving session background time:', error);
-    }
-  },
+  getRegistrationOtpResendUntil: () =>
+    readNumber(REGISTRATION_OTP_RESEND_UNTIL_KEY, 'OTP resend deadline'),
 
-  async getSessionBackgroundedAt(): Promise<number | null> {
-    try {
-      const value = await SecureStore.getItemAsync(SESSION_BACKGROUND_AT_KEY);
-      if (!value) return null;
-      const timestamp = Number(value);
-      return Number.isFinite(timestamp) ? timestamp : null;
-    } catch (error) {
-      console.error('Error getting session background time:', error);
-      return null;
-    }
-  },
+  setRegistrationOtpResendUntil: (deadline: number) =>
+    writeString(
+      REGISTRATION_OTP_RESEND_UNTIL_KEY,
+      String(deadline),
+      'OTP resend deadline',
+      true
+    ),
 
-  async clearSessionBackgroundedAt(): Promise<void> {
-    try {
-      await SecureStore.deleteItemAsync(SESSION_BACKGROUND_AT_KEY);
-    } catch (error) {
-      console.error('Error clearing session background time:', error);
-    }
-  },
+  clearRegistrationOtpResendUntil: () =>
+    removeKey(REGISTRATION_OTP_RESEND_UNTIL_KEY, 'OTP resend deadline', true),
+
+  setSessionBackgroundedAt: (timestamp: number) =>
+    writeString(
+      SESSION_BACKGROUND_AT_KEY,
+      String(timestamp),
+      'session background time'
+    ),
+
+  getSessionBackgroundedAt: () =>
+    readNumber(SESSION_BACKGROUND_AT_KEY, 'session background time'),
+
+  clearSessionBackgroundedAt: () =>
+    removeKey(SESSION_BACKGROUND_AT_KEY, 'session background time'),
 
   async setTokenState(state: StoredTokenState): Promise<void> {
     try {
       await SecureStore.setItemAsync(TOKEN_CODE_KEY, state.code);
-      await SecureStore.setItemAsync(TOKEN_EXPIRES_AT_KEY, String(state.expiresAt));
+      await SecureStore.setItemAsync(
+        TOKEN_EXPIRES_AT_KEY,
+        String(state.expiresAt)
+      );
     } catch (error) {
       console.error('Error saving token countdown:', error);
       throw error;
@@ -249,124 +178,68 @@ export const authStorage = {
   },
 
   async getTokenState(): Promise<StoredTokenState | null> {
-    try {
-      const [code, expiresAtValue] = await Promise.all([
-        SecureStore.getItemAsync(TOKEN_CODE_KEY),
-        SecureStore.getItemAsync(TOKEN_EXPIRES_AT_KEY),
-      ]);
-      const expiresAt = expiresAtValue ? Number(expiresAtValue) : NaN;
-      if (!code || !Number.isFinite(expiresAt)) return null;
-      return { code, expiresAt };
-    } catch (error) {
-      console.error('Error restoring token countdown:', error);
-      return null;
-    }
+    const [code, expiresAt] = await Promise.all([
+      readString(TOKEN_CODE_KEY, 'token code'),
+      readNumber(TOKEN_EXPIRES_AT_KEY, 'token expiry'),
+    ]);
+    if (!code || expiresAt === null) return null;
+    return { code, expiresAt };
   },
 
   async clearTokenState(): Promise<void> {
-    try {
-      await SecureStore.deleteItemAsync(TOKEN_CODE_KEY);
-      await SecureStore.deleteItemAsync(TOKEN_EXPIRES_AT_KEY);
-    } catch (error) {
-      console.error('Error clearing token countdown:', error);
-    }
+    await removeKey(TOKEN_CODE_KEY, 'token code');
+    await removeKey(TOKEN_EXPIRES_AT_KEY, 'token expiry');
   },
 
   async setTotpCredentials(credentials: TotpCredentials): Promise<void> {
-    try {
-      await SecureStore.setItemAsync(
-        TOTP_CREDENTIALS_KEY,
-        JSON.stringify(credentials)
-      );
-    } catch (error) {
-      console.error('Error securely saving TOTP credentials:', error);
-      throw error;
+    // Normalize before saving so a new device's data is always stored in a valid shape.
+    const normalized = normalizeTotpCredentials(credentials);
+    if (!normalized) {
+      throw new Error('Refusing to store invalid TOTP credentials.');
     }
+    await writeString(
+      TOTP_CREDENTIALS_KEY,
+      JSON.stringify(normalized),
+      'TOTP credentials',
+      true
+    );
   },
 
   async getTotpCredentials(): Promise<TotpCredentials | null> {
-    try {
-      const stored = await SecureStore.getItemAsync(TOTP_CREDENTIALS_KEY);
-      if (!stored) return null;
+    const stored = await readString(TOTP_CREDENTIALS_KEY, 'TOTP credentials');
+    if (!stored) return null;
 
-      const credentials = JSON.parse(stored) as Partial<TotpCredentials>;
-      if (
-        typeof credentials.secret !== 'string' ||
-        typeof credentials.algorithm !== 'string' ||
-        typeof credentials.digits !== 'number' ||
-        typeof credentials.periodSeconds !== 'number' ||
-        typeof credentials.issuedAt !== 'string'
-      ) {
-        return null;
+    try {
+      const normalized = normalizeTotpCredentials(JSON.parse(stored));
+      if (!normalized) {
+        // Never log the secret itself.
+        console.warn('Stored TOTP credentials failed validation.');
       }
-
-      return credentials as TotpCredentials;
+      return normalized;
     } catch (error) {
-      console.error('Error reading TOTP credentials:', error);
+      console.error('Error parsing TOTP credentials:', error);
       return null;
     }
   },
 
-  async clearTotpCredentials(): Promise<void> {
-    try {
-      await SecureStore.deleteItemAsync(TOTP_CREDENTIALS_KEY);
-    } catch (error) {
-      console.error('Error clearing TOTP credentials:', error);
-    }
-  },
+  clearTotpCredentials: () => removeKey(TOTP_CREDENTIALS_KEY, 'TOTP credentials'),
 
-  async setDeviceRegisteredAt(timestamp: string): Promise<void> {
-    try {
-      await SecureStore.setItemAsync(DEVICE_REGISTERED_AT_KEY, timestamp);
-    } catch (error) {
-      console.error('Error saving device registration time:', error);
-    }
-  },
+  setDeviceRegisteredAt: (timestamp: string) =>
+    writeString(DEVICE_REGISTERED_AT_KEY, timestamp, 'device registration time'),
 
-  async getDeviceRegisteredAt(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(DEVICE_REGISTERED_AT_KEY);
-    } catch (error) {
-      console.error('Error reading device registration time:', error);
-      return null;
-    }
-  },
+  getDeviceRegisteredAt: () =>
+    readString(DEVICE_REGISTERED_AT_KEY, 'device registration time'),
 
-  async setDeviceLastUsedAt(timestamp: string): Promise<void> {
-    try {
-      await SecureStore.setItemAsync(DEVICE_LAST_USED_AT_KEY, timestamp);
-    } catch (error) {
-      console.error('Error saving device last-used time:', error);
-    }
-  },
+  setDeviceLastUsedAt: (timestamp: string) =>
+    writeString(DEVICE_LAST_USED_AT_KEY, timestamp, 'device last-used time'),
 
-  async getDeviceLastUsedAt(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(DEVICE_LAST_USED_AT_KEY);
-    } catch (error) {
-      console.error('Error reading device last-used time:', error);
-      return null;
-    }
-  },
+  getDeviceLastUsedAt: () =>
+    readString(DEVICE_LAST_USED_AT_KEY, 'device last-used time'),
 
-  /**
-   * Get all auth data
-   */
+  /** Get all auth data */
   async getAuthData(): Promise<AuthData | null> {
     try {
-      const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-      const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-      const username = await SecureStore.getItemAsync(USERNAME_KEY) || '';
-      const customerName = await SecureStore.getItemAsync(CUSTOMER_NAME_KEY) || '';
-      const accountNumber = await SecureStore.getItemAsync(ACCOUNT_NUMBER_KEY) || '';
-      const passcode = await SecureStore.getItemAsync(PASSCODE_KEY) || undefined;
-      const deviceId = await SecureStore.getItemAsync(DEVICE_ID_KEY) || undefined;
-
-      if (!accessToken || !refreshToken) {
-        return null;
-      }
-
-      return {
+      const [
         accessToken,
         refreshToken,
         username,
@@ -374,6 +247,26 @@ export const authStorage = {
         accountNumber,
         passcode,
         deviceId,
+      ] = await Promise.all([
+        SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
+        SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
+        SecureStore.getItemAsync(USERNAME_KEY),
+        SecureStore.getItemAsync(CUSTOMER_NAME_KEY),
+        SecureStore.getItemAsync(ACCOUNT_NUMBER_KEY),
+        SecureStore.getItemAsync(PASSCODE_KEY),
+        SecureStore.getItemAsync(DEVICE_ID_KEY),
+      ]);
+
+      if (!accessToken || !refreshToken) return null;
+
+      return {
+        accessToken,
+        refreshToken,
+        username: username || '',
+        customerName: customerName || '',
+        accountNumber: accountNumber || '',
+        passcode: passcode || undefined,
+        deviceId: deviceId || undefined,
       };
     } catch (error) {
       console.error('Error getting auth data:', error);
@@ -382,30 +275,28 @@ export const authStorage = {
   },
 
   /**
-   * Clear authentication session (logout)
-   * Keeps username and customer name remembered for convenience
+   * Clear authentication session (logout).
+   * Keeps username, customer name, TOTP credentials and device registration
+   * so the eToken still works after logging back in.
    */
   async clearAuthSession(): Promise<void> {
     try {
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
       await SecureStore.deleteItemAsync(ACCOUNT_NUMBER_KEY);
-      if (!(await this.getBiometricEnabled())) {
+      if (!(await authStorage.getBiometricEnabled())) {
         await SecureStore.deleteItemAsync(PASSCODE_KEY);
       }
       await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
       await SecureStore.deleteItemAsync(SESSION_BACKGROUND_AT_KEY);
-      await this.clearTokenState();
-      // Keep USERNAME_KEY for convenience
+      await authStorage.clearTokenState();
     } catch (error) {
       console.error('Error clearing auth session:', error);
       throw error;
     }
   },
 
-  /**
-   * Clear all data (complete logout including username)
-   */
+  /** Clear all data (complete logout including username and TOTP credentials) */
   async clearAll(): Promise<void> {
     try {
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
@@ -418,8 +309,8 @@ export const authStorage = {
       await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
       await SecureStore.deleteItemAsync(SESSION_BACKGROUND_AT_KEY);
       await SecureStore.deleteItemAsync(REGISTRATION_OTP_RESEND_UNTIL_KEY);
-      await this.clearTokenState();
-      await this.clearTotpCredentials();
+      await authStorage.clearTokenState();
+      await authStorage.clearTotpCredentials();
       await SecureStore.deleteItemAsync(DEVICE_REGISTERED_AT_KEY);
       await SecureStore.deleteItemAsync(DEVICE_LAST_USED_AT_KEY);
     } catch (error) {
@@ -428,11 +319,9 @@ export const authStorage = {
     }
   },
 
-  /**
-   * Check if user is authenticated
-   */
+  /** Check if user is authenticated */
   async isAuthenticated(): Promise<boolean> {
-    const accessToken = await this.getAccessToken();
+    const accessToken = await authStorage.getAccessToken();
     return accessToken !== null;
   },
 };

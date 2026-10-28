@@ -282,6 +282,7 @@ export default function PersonalRegistrationScreen({
   const [domiciledBranch, setDomiciledBranch] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [currentStep, setCurrentStep] = useState(step);
@@ -373,10 +374,12 @@ export default function PersonalRegistrationScreen({
     if (isVerifyingAccount || isSubmitting) return;
     if (accountValue.length !== 10) {
       setShowError(true);
+      setErrorMessage("Enter a valid 10-digit account number.");
       return;
     }
 
     setShowError(false);
+    setErrorMessage("");
     setIsVerifyingAccount(true);
     try {
       const response = await registrationApi.verifyAccount({
@@ -385,7 +388,9 @@ export default function PersonalRegistrationScreen({
       });
 
       if (!response.success) {
-        throw new Error(response.message || "Account verification failed.");
+        setShowError(true);
+        setErrorMessage(response.message || "Account verification failed.");
+        return;
       }
 
       const details = response.data;
@@ -426,14 +431,11 @@ export default function PersonalRegistrationScreen({
       updateResendDeadline(deadline);
       setResendSeconds(300);
       setShowOtp(true);
-    } catch (error) {
-      setToast({
-        message:
-          error instanceof Error
-            ? error.message
-            : "Account verification failed. Please try again.",
-        type: "error"
-      });
+    } catch (error: any) {
+      // Extract the backend error message from the error object
+      const errorMessage = error?.message || error?.data?.message || "Account verification failed. Please try again.";
+      setShowError(true);
+      setErrorMessage(errorMessage);
     } finally {
       setIsVerifyingAccount(false);
     }
@@ -585,6 +587,7 @@ export default function PersonalRegistrationScreen({
                   onChangeText={(v) => {
                     setAccountNumber(v.replace(/[^0-9]/g, "").slice(0, 10));
                     setShowError(false);
+                    setErrorMessage("");
                   }}
                   keyboardType="number-pad"
                   maxLength={10}
@@ -611,7 +614,7 @@ export default function PersonalRegistrationScreen({
 
               {showError && (
                 <Text className="mt-4 text-sm font-outfit text-rose-500">
-                  Enter a valid 10-digit account number.
+                  {errorMessage}
                 </Text>
               )}
 
@@ -629,7 +632,7 @@ export default function PersonalRegistrationScreen({
                     <ActivityIndicator size="small" color="white" />
                   ) : null}
                   <Text className="text-base font-outfit-bold text-white">
-                    {isVerifyingAccount ? "Validating…" : "Validate & Continue"}
+                    {isVerifyingAccount ? "Validating…" : "Validate"}
                   </Text>
                   {!isVerifyingAccount && (
                     <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.5} />
