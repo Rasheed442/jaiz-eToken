@@ -14,6 +14,9 @@ import CreateProfileScreen from "@/screens/CreateProfileScreen";
 import DeregisterDeviceScreen from "@/screens/DeregisterDeviceScreen";
 import DeviceChangeDetailsScreen from "@/screens/DeviceChangeDetailsScreen";
 import DeviceChangeOtpScreen from "@/screens/DeviceChangeOtpScreen";
+import DeviceChangeVerifyScreen from "@/screens/DeviceChangeVerifyScreen";
+import DeviceChangeSecurityQuestionsScreen from "@/screens/DeviceChangeSecurityQuestionsScreen";
+import DeviceChangeFaceVerificationPrepareScreen from "@/screens/DeviceChangeFaceVerificationPrepareScreen";
 import DeviceDeregisteredScreen from "@/screens/Devicederegisteredscreen";
 import DeviceDetailsScreen from "@/screens/Devicedetails";
 import DeviceRegisteredScreen from "@/screens/DeviceregisteredScreen";
@@ -53,6 +56,9 @@ type Screen =
   | "deregister-device"
   | "device-deregistered"
   | "device-change-otp"
+  | "device-change-verify"
+  | "device-change-security-questions"
+  | "device-change-face-prepare"
   | "device-change-details"
   | "animated-splash";
 type TransitionDirection = "forward" | "backward";
@@ -103,6 +109,8 @@ export default function HomeScreen() {
   const [hasSplashCompleted, setHasSplashCompleted] = useState(false);
   const [deviceChangePhoneNumber, setDeviceChangePhoneNumber] = useState("");
   const [deviceChangeOtp, setDeviceChangeOtp] = useState("");
+  const [deviceChangeToken, setDeviceChangeToken] = useState("");
+  const [deviceChangeSecurityQuestions, setDeviceChangeSecurityQuestions] = useState<Array<{ id: number; question: string }>>([]);
   const lastActivityAt = useRef(Date.now());
   const backgroundedAt = useRef<number | null>(null);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -688,8 +696,70 @@ export default function HomeScreen() {
             onNext={(otp) => {
               setDeviceChangeOtp(otp);
               setTransitionDirection("forward");
+              setScreen("device-change-verify");
+            }}
+          />
+        </View>
+      );
+    }
+
+    if (screen === "device-change-verify") {
+      return (
+        <View className="flex-1 bg-[#F6F8FA]">
+          <DeviceChangeVerifyScreen
+            phoneNumber={deviceChangePhoneNumber}
+            otp={deviceChangeOtp}
+            onBack={() => {
+              setTransitionDirection("backward");
+              setScreen("device-change-otp");
+            }}
+            onNext={(changeToken, securityQuestions) => {
+              setDeviceChangeToken(changeToken);
+              setDeviceChangeSecurityQuestions(securityQuestions);
+              setTransitionDirection("forward");
+              setScreen("device-change-security-questions");
+            }}
+          />
+        </View>
+      );
+    }
+
+    if (screen === "device-change-security-questions") {
+      return (
+        <View className="flex-1 bg-[#F6F8FA]">
+          <DeviceChangeSecurityQuestionsScreen
+            phoneNumber={deviceChangePhoneNumber}
+            changeToken={deviceChangeToken}
+            securityQuestions={deviceChangeSecurityQuestions}
+            onBack={() => {
+              setTransitionDirection("backward");
+              setScreen("device-change-verify");
+            }}
+            onNext={() => {
+              setTransitionDirection("forward");
+              setScreen("device-change-face-prepare");
+            }}
+          />
+        </View>
+      );
+    }
+
+    if (screen === "device-change-face-prepare") {
+      return (
+        <View className="flex-1 bg-[#F3F5F7]">
+          <DeviceChangeFaceVerificationPrepareScreen
+            phoneNumber={deviceChangePhoneNumber}
+            changeToken={deviceChangeToken}
+            onBack={() => {
+              setTransitionDirection("backward");
+              setScreen("device-change-security-questions");
+            }}
+            onVerificationComplete={() => {
+              setTransitionDirection("forward");
               setScreen("device-change-details");
             }}
+            step={4}
+            totalSteps={6}
           />
         </View>
       );
@@ -700,14 +770,63 @@ export default function HomeScreen() {
         <View className="flex-1 bg-[#F6F8FA]">
           <DeviceChangeDetailsScreen
             phoneNumber={deviceChangePhoneNumber}
-            otp={deviceChangeOtp}
+            changeToken={deviceChangeToken}
             onBack={() => {
               setTransitionDirection("backward");
-              setScreen("device-change-otp");
+              setScreen("device-change-security-questions");
             }}
-            onComplete={() => {
+            onComplete={async () => {
+              // After device change, need to provision the eToken
+              // For now, just go to welcome
+              const authData = await authStorage.getAuthData();
+              if (authData) {
+                // Log in to get new tokens and provision
+                try {
+                  const loginResponse = await registrationApi.login({
+                    phoneNumber: deviceChangePhoneNumber,
+                    passcode: authData.passcode || "",
+                    deviceId: authData.deviceId || "",
+                    deviceFingerprint: `sha256_${authData.deviceId || ""}`,
+                    useBiometric: false
+                  });
+
+                  if (loginResponse.success && loginResponse.data) {
+                    // Provision token
+                    const provisionResponse = await registrationApi.provisionToken(
+                      {
+                        username: deviceChangePhoneNumber,
+                        passcode: authData.passcode || "",
+                        deviceId: authData.deviceId || ""
+                      },
+                      loginResponse.data.accessToken
+                    );
+
+                    if (provisionResponse.success && provisionResponse.data?.secret) {
+                      await authStorage.setTotpCredentials({
+                        secret: provisionResponse.data.secret,
+                        algorithm: provisionResponse.data.algorithm,
+                        digits: provisionResponse.data.digits,
+                        periodSeconds: provisionResponse.data.periodSeconds,
+                        issuedAt: provisionResponse.data.issuedAt
+                      });
+
+                      await authStorage.setAuthData({
+                        accessToken: loginResponse.data.accessToken,
+                        refreshToken: loginResponse.data.refreshToken,
+                        username: loginResponse.data.username,
+                        customerName: loginResponse.data.customerName,
+                        accountNumber: loginResponse.data.accountNumber,
+                        passcode: authData.passcode,
+                        deviceId: authData.deviceId
+                      });
+                    }
+                  }
+                } catch (error) {
+                  console.error("Provisioning after device change failed:", error);
+                }
+              }
               setTransitionDirection("forward");
-              setScreen("welcome");
+              setScreen("home");
             }}
           />
         </View>

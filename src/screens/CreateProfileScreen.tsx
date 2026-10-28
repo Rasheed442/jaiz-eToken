@@ -489,7 +489,7 @@ export default function CreateProfileScreen({
       await authStorage.setAuthData({
         accessToken: activationResponse.data.accessToken,
         refreshToken: activationResponse.data.refreshToken,
-        username: activationResponse.data.username,
+        username: activationResponse.data.username || phoneNumber,
         customerName: activationResponse.data.customerName,
         accountNumber,
         passcode,

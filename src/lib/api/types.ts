@@ -866,9 +866,10 @@ export type InitiateDeviceChangeResponse =
   InitiateDeviceChangeSuccessResponse | InitiateDeviceChangeErrorResponse;
 
 /**
- * Device Change Request
+ * Device Change Request (OLD - DEPRECATED)
+ * This is the old format, kept for reference
  */
-export interface DeviceChangeRequest {
+export interface DeviceChangeRequestOld {
   username: string;
   passcode: string;
   newDeviceId: string;
@@ -876,6 +877,172 @@ export interface DeviceChangeRequest {
   newDeviceModel: string;
   newOsVersion: string;
   otp: string;
+}
+
+/**
+ * Device Change Verify Request (Step 2 - NEW)
+ */
+export interface DeviceChangeVerifyRequest {
+  username: string;
+  passcode: string;
+  otp: string;
+}
+
+/**
+ * Security Question with ID (for device change)
+ */
+export interface SecurityQuestionWithId {
+  id: number;
+  question: string;
+}
+
+/**
+ * Device Change Verify Response (Success)
+ */
+export interface DeviceChangeVerifySuccessResponse {
+  success: true;
+  message: string;
+  data: {
+    changeToken: string;
+    expiresAt: string;
+    securityQuestions: SecurityQuestionWithId[];
+  };
+  timestamp: string;
+}
+
+/**
+ * Device Change Verify Response (Error)
+ */
+export interface DeviceChangeVerifyErrorResponse {
+  success: false;
+  message: string;
+  errorCode?: string;
+  timestamp?: string;
+}
+
+/**
+ * Device Change Verify Response (Union)
+ */
+export type DeviceChangeVerifyResponse =
+  DeviceChangeVerifySuccessResponse | DeviceChangeVerifyErrorResponse;
+
+/**
+ * Device Change Security Questions Request (Step 3 - NEW)
+ */
+export interface DeviceChangeSecurityQuestionsRequest {
+  username: string;
+  changeToken: string;
+  answers: Array<{
+    questionId: number;
+    answer: string;
+  }>;
+}
+
+/**
+ * Device Change Security Questions Response (Success)
+ */
+export interface DeviceChangeSecurityQuestionsSuccessResponse {
+  success: true;
+  message: string;
+  timestamp: string;
+}
+
+/**
+ * Device Change Security Questions Response (Error)
+ */
+export interface DeviceChangeSecurityQuestionsErrorResponse {
+  success: false;
+  message: string;
+  errorCode?: string;
+  timestamp?: string;
+}
+
+/**
+ * Device Change Security Questions Response (Union)
+ */
+export type DeviceChangeSecurityQuestionsResponse =
+  DeviceChangeSecurityQuestionsSuccessResponse | DeviceChangeSecurityQuestionsErrorResponse;
+
+/**
+ * Device Change Liveliness Start Request (Step 4 - NEW)
+ */
+export interface DeviceChangeLivelinessStartRequest {
+  username: string;
+  changeToken: string;
+}
+
+/**
+ * Device Change Liveliness Start Response (Success)
+ */
+export interface DeviceChangeLivelinessStartSuccessResponse {
+  success: true;
+  message: string;
+  data: StartLivelinessData;
+  timestamp: string;
+}
+
+/**
+ * Device Change Liveliness Start Response (Error)
+ */
+export interface DeviceChangeLivelinessStartErrorResponse {
+  success: false;
+  message: string;
+  errorCode?: string;
+  timestamp?: string;
+}
+
+/**
+ * Device Change Liveliness Start Response (Union)
+ */
+export type DeviceChangeLivelinessStartResponse =
+  DeviceChangeLivelinessStartSuccessResponse | DeviceChangeLivelinessStartErrorResponse;
+
+/**
+ * Device Change Liveliness Confirm Request (Step 5 - NEW)
+ */
+export interface DeviceChangeLivelinessConfirmRequest {
+  username: string;
+  changeToken: string;
+}
+
+/**
+ * Device Change Liveliness Confirm Response (Success)
+ */
+export interface DeviceChangeLivelinessConfirmSuccessResponse {
+  success: true;
+  message: string;
+  data: {
+    status: "PASSED" | "PENDING";
+  };
+  timestamp: string;
+}
+
+/**
+ * Device Change Liveliness Confirm Response (Error)
+ */
+export interface DeviceChangeLivelinessConfirmErrorResponse {
+  success: false;
+  message: string;
+  errorCode?: string;
+  timestamp?: string;
+}
+
+/**
+ * Device Change Liveliness Confirm Response (Union)
+ */
+export type DeviceChangeLivelinessConfirmResponse =
+  DeviceChangeLivelinessConfirmSuccessResponse | DeviceChangeLivelinessConfirmErrorResponse;
+
+/**
+ * Device Change Request (Step 6 - NEW)
+ */
+export interface DeviceChangeRequest {
+  username: string;
+  changeToken: string;
+  newDeviceId: string;
+  newDeviceFingerprint: string;
+  newDeviceModel: string;
+  newOsVersion: string;
 }
 
 /**

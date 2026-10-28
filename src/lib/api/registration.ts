@@ -14,6 +14,14 @@ import type {
     CreateProfileResponse,
     DeviceChangeRequest,
     DeviceChangeResponse,
+    DeviceChangeVerifyRequest,
+    DeviceChangeVerifyResponse,
+    DeviceChangeSecurityQuestionsRequest,
+    DeviceChangeSecurityQuestionsResponse,
+    DeviceChangeLivelinessStartRequest,
+    DeviceChangeLivelinessStartResponse,
+    DeviceChangeLivelinessConfirmRequest,
+    DeviceChangeLivelinessConfirmResponse,
     DeviceRegistrationRequest,
     DeviceRegistrationResponse,
     ForgotPasscodeRequest,
@@ -348,7 +356,59 @@ export const registrationApi = {
   },
 
   /**
-   * Complete Device Change
+   * Verify Device Change (Step 2 - NEW)
+   * POST api/v1/device/change/verify
+   */
+  async verifyDeviceChange(
+    data: DeviceChangeVerifyRequest
+  ): Promise<DeviceChangeVerifyResponse> {
+    return apiClient.post<DeviceChangeVerifyResponse>(
+      'device/change/verify',
+      data
+    );
+  },
+
+  /**
+   * Answer Security Questions for Device Change (Step 3 - NEW)
+   * POST api/v1/device/change/security-questions
+   */
+  async verifyDeviceChangeSecurityQuestions(
+    data: DeviceChangeSecurityQuestionsRequest
+  ): Promise<DeviceChangeSecurityQuestionsResponse> {
+    return apiClient.post<DeviceChangeSecurityQuestionsResponse>(
+      'device/change/security-questions',
+      data
+    );
+  },
+
+  /**
+   * Start Device Change Liveliness Check (Step 4 - NEW)
+   * POST api/v1/device/change/liveliness/start
+   */
+  async startDeviceChangeLiveliness(
+    data: DeviceChangeLivelinessStartRequest
+  ): Promise<DeviceChangeLivelinessStartResponse> {
+    return apiClient.post<DeviceChangeLivelinessStartResponse>(
+      'device/change/liveliness/start',
+      data
+    );
+  },
+
+  /**
+   * Confirm Device Change Liveliness Check (Step 5 - NEW)
+   * POST api/v1/device/change/liveliness/confirm
+   */
+  async confirmDeviceChangeLiveliness(
+    data: DeviceChangeLivelinessConfirmRequest
+  ): Promise<DeviceChangeLivelinessConfirmResponse> {
+    return apiClient.post<DeviceChangeLivelinessConfirmResponse>(
+      'device/change/liveliness/confirm',
+      data
+    );
+  },
+
+  /**
+   * Complete Device Change (Step 6 - NEW)
    * POST api/v1/device/change
    */
   async changeDevice(

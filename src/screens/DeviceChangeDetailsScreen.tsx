@@ -2,7 +2,7 @@ import { registrationApi } from "@/lib/api";
 import { authStorage } from "@/lib/auth/storage";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
-import { AlertCircle, ChevronLeft, CheckCircle, Eye, EyeOff, Smartphone } from "lucide-react-native";
+import { AlertCircle, ChevronLeft, CheckCircle, Smartphone } from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -22,7 +22,7 @@ type DeviceChangeDetailsScreenProps = {
   onBack: () => void;
   onComplete: () => void;
   phoneNumber: string;
-  otp: string;
+  changeToken: string;
 };
 
 function Field({
@@ -52,63 +52,6 @@ function Field({
           placeholderTextColor="#9AA5B1"
           className="flex-1 text-[16px] font-outfit text-[#1B2D4A]"
         />
-      </View>
-    </View>
-  );
-}
-
-function SecureField({
-  label,
-  value,
-  onChangeText,
-  showSecure,
-  onToggleSecure,
-  ...inputProps
-}: {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  showSecure: boolean;
-  onToggleSecure: () => void;
-} & Omit<React.ComponentProps<typeof TextInput>, "secureTextEntry">) {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <View>
-      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A]">{label}</Text>
-      <View
-        className={`h-[52px] flex-row items-center rounded-xl border bg-white px-4 ${
-          focused ? "border-[#123E7C]" : "border-[#DDE3EA]"
-        }`}
-      >
-        <TextInput
-          {...inputProps}
-          value={value}
-          onChangeText={onChangeText}
-          secureTextEntry={!showSecure}
-          onFocus={(e) => {
-            setFocused(true);
-            inputProps.onFocus?.(e);
-          }}
-          onBlur={(e) => {
-            setFocused(false);
-            inputProps.onBlur?.(e);
-          }}
-          placeholderTextColor="#9AA5B1"
-          className="flex-1 text-[16px] font-outfit text-[#1B2D4A]"
-        />
-        <Pressable
-          onPress={onToggleSecure}
-          className="ml-2 p-2"
-          accessibilityLabel={showSecure ? "Hide passcode" : "Show passcode"}
-          accessibilityRole="button"
-        >
-          {showSecure ? (
-            <EyeOff size={20} color="#67787F" />
-          ) : (
-            <Eye size={20} color="#67787F" />
-          )}
-        </Pressable>
       </View>
     </View>
   );
@@ -159,27 +102,14 @@ export default function DeviceChangeDetailsScreen({
   onBack,
   onComplete,
   phoneNumber,
-  otp
+  changeToken
 }: DeviceChangeDetailsScreenProps) {
-  const [passcode, setPasscode] = useState("");
-  const [confirmPasscode, setConfirmPasscode] = useState("");
-  const [showPasscode, setShowPasscode] = useState(false);
-  const [showConfirmPasscode, setShowConfirmPasscode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const handleSubmit = async () => {
-    if (passcode.length !== PASSCODE_LENGTH) {
-      setError("Your passcode must be 6 digits.");
-      return;
-    }
-    if (confirmPasscode !== passcode) {
-      setError("Passcodes do not match.");
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
@@ -194,12 +124,11 @@ export default function DeviceChangeDetailsScreen({
 
       const payload = {
         username: phoneNumber,
-        passcode,
+        changeToken,
         newDeviceId,
         newDeviceFingerprint: `sha256_${newDeviceId}`,
         newDeviceModel: Device.modelName || Device.deviceName || "Unknown",
-        newOsVersion: `${Platform.OS} ${Device.osVersion || ""}`.trim(),
-        otp
+        newOsVersion: `${Platform.OS} ${Device.osVersion || ""}`.trim()
       };
 
       const response = await registrationApi.changeDevice(payload);
@@ -209,47 +138,11 @@ export default function DeviceChangeDetailsScreen({
         setSuccessMessage(response.message || "Device changed successfully.");
         setShowSuccessModal(true);
 
-        // Provision TOTP after successful device change
-        const loginPayload = {
-          phoneNumber: phoneNumber,
-          passcode,
-          deviceId: newDeviceId,
-          deviceFingerprint: `sha256_${newDeviceId}`,
-          useBiometric: false
-        };
-
-        const loginResponse = await registrationApi.login(loginPayload);
-
-        if (loginResponse.success && loginResponse.data) {
-          const provisionResponse = await registrationApi.provisionToken(
-            {
-              username: phoneNumber,
-              passcode,
-              deviceId: newDeviceId
-            },
-            loginResponse.data.accessToken
-          );
-
-          if (provisionResponse.success && provisionResponse.data?.secret) {
-            await authStorage.setTotpCredentials({
-              secret: provisionResponse.data.secret,
-              algorithm: provisionResponse.data.algorithm,
-              digits: provisionResponse.data.digits,
-              periodSeconds: provisionResponse.data.periodSeconds,
-              issuedAt: provisionResponse.data.issuedAt
-            });
-
-            await authStorage.setAuthData({
-              accessToken: loginResponse.data.accessToken,
-              refreshToken: loginResponse.data.refreshToken,
-              username: loginResponse.data.username,
-              customerName: loginResponse.data.customerName,
-              accountNumber: loginResponse.data.accountNumber,
-              passcode,
-              deviceId: newDeviceId
-            });
-          }
-        }
+        // Note: The parent component should handle provisioning after this completes
+        // This is just the device change step
+        setTimeout(() => {
+          onComplete();
+        }, 2000);
       } else {
         setError(response.message || "Device change failed. Please try again.");
       }
@@ -261,11 +154,6 @@ export default function DeviceChangeDetailsScreen({
   };
 
   const clearError = () => error && setError(null);
-
-  const digitsOnly = (setter: (v: string) => void) => (t: string) => {
-    clearError();
-    setter(t.replace(/\D/g, "").slice(0, PASSCODE_LENGTH));
-  };
 
   const handleSuccessDismiss = () => {
     setShowSuccessModal(false);
@@ -309,35 +197,8 @@ export default function DeviceChangeDetailsScreen({
             Complete device change
           </Text>
           <Text className="mt-2 text-[15px] leading-[22px] font-outfit text-[#67787F]">
-            Enter your account details to complete the device change for {phoneNumber}.
+            Complete the device change for {phoneNumber}. Your eToken will be moved to this device.
           </Text>
-
-          <View className="mt-8 gap-5">
-            <SecureField
-              label="Passcode"
-              value={passcode}
-              onChangeText={digitsOnly(setPasscode)}
-              placeholder="6 digits"
-              keyboardType="number-pad"
-              showSecure={showPasscode}
-              onToggleSecure={() => setShowPasscode(!showPasscode)}
-              maxLength={PASSCODE_LENGTH}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <SecureField
-              label="Confirm Passcode"
-              value={confirmPasscode}
-              onChangeText={digitsOnly(setConfirmPasscode)}
-              placeholder="6 digits"
-              keyboardType="number-pad"
-              showSecure={showConfirmPasscode}
-              onToggleSecure={() => setShowConfirmPasscode(!showConfirmPasscode)}
-              maxLength={PASSCODE_LENGTH}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
 
           {error && <ErrorBanner message={error} />}
         </ScrollView>
@@ -355,7 +216,7 @@ export default function DeviceChangeDetailsScreen({
             <Text
               className={`text-[17px] font-outfit-semibold text-white ${isLoading ? "ml-3" : ""}`}
             >
-              {isLoading ? "Changing device..." : "Change device"}
+              {isLoading ? "Completing..." : "Complete device change"}
             </Text>
           </Pressable>
         </View>
