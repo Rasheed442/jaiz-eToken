@@ -223,10 +223,12 @@ class ApiClient {
       clearTimeout(timeoutId);
 
       // Handle 401 Unauthorized - try to refresh token
-      // A failed login is expected to return its own authentication error.
-      // Don't treat it as an expired authenticated session or replace the
-      // backend response with the session-refresh message.
-      if (response.status === 401 && endpoint !== 'auth/login') {
+      // Only attempt refresh if the user is actually logged in (has an access token).
+      // Onboarding, login, and device change flows don't require auth, so don't try to refresh.
+      const accessToken = await authStorage.getAccessToken();
+      const isDeviceChangeEndpoint = endpoint.startsWith('device/change/');
+
+      if (response.status === 401 && accessToken && !isDeviceChangeEndpoint) {
         console.log("🔄 Token expired, attempting refresh...");
 
         if (isRefreshing) {

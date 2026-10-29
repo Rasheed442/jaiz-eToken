@@ -159,7 +159,7 @@ export default function DeviceChangeSecurityQuestionsScreen({
             Security questions
           </Text>
           <Text className="mt-2 text-[15px] leading-[22px] font-outfit text-[#67787F]">
-            Answer at least 2 of your security questions correctly to continue.
+            Answer your security questions correctly to continue.
           </Text>
 
           <View className="mt-8 gap-5">
