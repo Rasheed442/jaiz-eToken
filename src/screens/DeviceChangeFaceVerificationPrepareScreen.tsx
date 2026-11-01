@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 import { registrationApi } from "../lib/api";
 import type { StartLivelinessData } from "../lib/api/types";
 import { METAMAP_CLIENT_ID } from "../lib/metamap";
@@ -64,9 +65,9 @@ function ProgressBar({
 }) {
   const progress = Math.min(1, Math.max(0, step / totalSteps));
   return (
-    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5]">
+    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5] dark:bg-[#1E2D4A]">
       <View
-        className="h-full rounded-full bg-[#123E7C]"
+        className="h-full rounded-full bg-[#123E7C] dark:bg-[#3B82F6]"
         style={{ width: `${progress * 100}%` }}
       />
     </View>
@@ -74,14 +75,15 @@ function ProgressBar({
 }
 
 function BackButton({ onPress }: { onPress: () => void }) {
+  const { isDark } = useAppTheme();
   return (
     <Pressable
       accessibilityLabel="Go back"
       accessibilityRole="button"
-      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] active:opacity-70"
+      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] dark:bg-[#1E2D4A] active:opacity-70"
       onPress={onPress}
     >
-      <ChevronLeft size={22} color="black" />
+      <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "#000000"} />
     </Pressable>
   );
 }
@@ -94,6 +96,7 @@ export default function DeviceChangeFaceVerificationPrepareScreen({
   step = 4,
   totalSteps = 6
 }: DeviceChangeFaceVerificationPrepareScreenProps) {
+  const { isDark } = useAppTheme();
   const [isStarting, setIsStarting] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isFlowOpen, setIsFlowOpen] = useState(false);
@@ -420,13 +423,14 @@ export default function DeviceChangeFaceVerificationPrepareScreen({
   const busy = isPreparing || isStarting || isFlowOpen || isConfirming;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F3F5F7]">
+    <SafeAreaView className="flex-1 bg-[#F3F5F7] dark:bg-[#070E1E]">
       <View className="px-6 pt-14">
-        <View className="flex-row items-center pt-6">
+        <View className="flex-row items-center justify-between pt-6">
           <BackButton onPress={onBack} />
-          <View className="ml-3 flex-1">
+          <View className="mx-3 flex-1">
             <ProgressBar step={step} totalSteps={totalSteps} />
           </View>
+          <ThemeToggleButton />
         </View>
       </View>
 
@@ -436,21 +440,21 @@ export default function DeviceChangeFaceVerificationPrepareScreen({
         keyboardShouldPersistTaps="handled"
       >
         <Animated.View entering={FadeIn.duration(400)}>
-          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7]">
-            <ScanFace size={24} color="#123E7C" />
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7] dark:bg-[#1E2D4A]">
+            <ScanFace size={24} color={isDark ? "#60A5FA" : "#123E7C"} />
           </View>
-          <Text className="mt-5 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+          <Text className="mt-5 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
             Face verification
           </Text>
-          <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
+          <Text className="mt-2 text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
             We need to verify your face to complete the device change for your security.
           </Text>
 
           {errorMessage && (
-            <View className="mt-5 rounded-xl border border-[#F0B4B4] bg-[#FDECEC] px-4 py-3">
+            <View className="mt-5 rounded-xl border border-[#F0B4B4] dark:border-[#7F1D1D] bg-[#FDECEC] dark:bg-[#3B1E1E] px-4 py-3">
               <Text
                 accessibilityRole="alert"
-                className="text-[13px] font-outfit-medium text-[#B3261E]"
+                className="text-[13px] font-outfit-medium text-[#B3261E] dark:text-[#F87171]"
               >
                 {errorMessage}
               </Text>
@@ -458,23 +462,23 @@ export default function DeviceChangeFaceVerificationPrepareScreen({
           )}
 
           {confirmationMessage && !errorMessage && (
-            <View className="mt-5 rounded-xl border border-[#D4DFFD] bg-[#EEF2F6] px-4 py-3">
-              <Text className="text-[13px] font-outfit-medium text-[#193F7F]">
+            <View className="mt-5 rounded-xl border border-[#D4DFFD] dark:border-[#2A3D63] bg-[#EEF2F6] dark:bg-[#131F35] px-4 py-3">
+              <Text className="text-[13px] font-outfit-medium text-[#193F7F] dark:text-[#60A5FA]">
                 {confirmationMessage}
               </Text>
             </View>
           )}
 
           <View className="mt-8 gap-4">
-            <View className="flex-row items-start rounded-2xl bg-[#FFF7DF] px-4 py-3">
-              <ShieldCheck size={19} color="#075091" strokeWidth={2.2} />
-              <Text className="ml-3 flex-1 text-[13px] font-outfit leading-[20px] text-[#3F5369]">
+            <View className="flex-row items-start rounded-2xl bg-[#FFF7DF] dark:bg-[#1E293B] px-4 py-3">
+              <ShieldCheck size={19} color={isDark ? "#FFB900" : "#075091"} strokeWidth={2.2} />
+              <Text className="ml-3 flex-1 text-[13px] font-outfit leading-[20px] text-[#3F5369] dark:text-[#CBD5E1]">
                 This ensures that only you can move your eToken to a new device.
               </Text>
             </View>
 
             <View className="mt-6">
-              <Text className="mb-3 text-[15px] font-outfit-semibold text-[#1B2D4A]">
+              <Text className="mb-3 text-[15px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                 What to expect:
               </Text>
               <View className="space-y-3">
@@ -482,7 +486,7 @@ export default function DeviceChangeFaceVerificationPrepareScreen({
                   <View className="mt-1 h-5 w-5 items-center justify-center rounded-full bg-[#123E7C]">
                     <Text className="text-[12px] font-bold text-white">1</Text>
                   </View>
-                  <Text className="ml-3 flex-1 text-[14px] font-outfit text-[#67787F]">
+                  <Text className="ml-3 flex-1 text-[14px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
                     Allow camera access when prompted
                   </Text>
                 </View>
@@ -490,7 +494,7 @@ export default function DeviceChangeFaceVerificationPrepareScreen({
                   <View className="mt-1 h-5 w-5 items-center justify-center rounded-full bg-[#123E7C]">
                     <Text className="text-[12px] font-bold text-white">2</Text>
                   </View>
-                  <Text className="ml-3 flex-1 text-[14px] font-outfit text-[#67787F]">
+                  <Text className="ml-3 flex-1 text-[14px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
                     Follow the on-screen instructions to position your face
                   </Text>
                 </View>
@@ -498,7 +502,7 @@ export default function DeviceChangeFaceVerificationPrepareScreen({
                   <View className="mt-1 h-5 w-5 items-center justify-center rounded-full bg-[#123E7C]">
                     <Text className="text-[12px] font-bold text-white">3</Text>
                   </View>
-                  <Text className="ml-3 flex-1 text-[14px] font-outfit text-[#67787F]">
+                  <Text className="ml-3 flex-1 text-[14px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
                     The process takes about 1-2 minutes
                   </Text>
                 </View>

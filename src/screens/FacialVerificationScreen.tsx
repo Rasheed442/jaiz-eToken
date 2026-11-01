@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
 import type { StartLivelinessData } from "../lib/api/types";
 import { METAMAP_CLIENT_ID } from "../lib/metamap";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 type FacialVerificationScreenProps = {
   onBack: () => void;
@@ -32,24 +33,24 @@ function ProgressBar({
 }) {
   const progress = Math.min(1, Math.max(0, step / totalSteps));
   return (
-    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5]">
+    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5] dark:bg-[#1E3A5F]">
       <View
-        className="h-full rounded-full bg-[#123E7C]"
+        className="h-full rounded-full bg-[#123E7C] dark:bg-[#60A5FA]"
         style={{ width: `${progress * 100}%` }}
       />
     </View>
   );
 }
 
-function BackButton({ onPress }: { onPress: () => void }) {
+function BackButton({ onPress, isDark }: { onPress: () => void; isDark?: boolean }) {
   return (
     <Pressable
       accessibilityLabel="Go back"
       accessibilityRole="button"
-      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] active:opacity-70"
+      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] dark:bg-[#1E2D4A] active:opacity-70"
       onPress={onPress}
     >
-      <ChevronLeft size={22} color="black" />
+      <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "black"} />
     </Pressable>
   );
 }
@@ -81,6 +82,7 @@ export default function FacialVerificationScreen({
   step = 3,
   totalSteps = 5
 }: FacialVerificationScreenProps) {
+  const { isDark } = useAppTheme();
   const [isStarting, setIsStarting] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isFlowOpen, setIsFlowOpen] = useState(false);
@@ -404,29 +406,30 @@ export default function FacialVerificationScreen({
   const busy = isPreparing || isStarting || isFlowOpen || isConfirming;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F3F5F7]">
+    <SafeAreaView className="flex-1 bg-[#F3F5F7] dark:bg-[#070E1E]">
       <ScrollView className="flex-1" contentContainerClassName="px-6 pb-10">
         <View className="flex-row items-center pt-6">
-          <BackButton onPress={onBack} />
+          <BackButton onPress={onBack} isDark={isDark} />
           <View className="ml-3 flex-1">
             <ProgressBar step={step} totalSteps={totalSteps} />
           </View>
+          <ThemeToggleButton />
         </View>
 
         <Animated.View entering={FadeIn.duration(400)}>
-          <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+          <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
             Verify it's you
           </Text>
-          <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
+          <Text className="mt-2 text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
             Follow the secure MetaMap steps to verify your face against your BVN
             profile photo.
           </Text>
 
           <View className="mt-10 items-center">
-            <View className="h-[240px] w-[240px] items-center justify-center rounded-full border-4 border-dashed border-[#123E7C] bg-[#E8F0FA]">
-              <ScanFace size={112} color="#123E7C" strokeWidth={1.4} />
+            <View className="h-[240px] w-[240px] items-center justify-center rounded-full border-4 border-dashed border-[#123E7C] dark:border-[#60A5FA] bg-[#E8F0FA] dark:bg-[#1E3A5F]">
+              <ScanFace size={112} color={isDark ? "#60A5FA" : "#123E7C"} strokeWidth={1.4} />
             </View>
-            <Text className="mt-6 text-center text-[15px] font-outfit text-[#67787F]">
+            <Text className="mt-6 text-center text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
               Use a well-lit area and keep your face visible throughout the
               check.
             </Text>
@@ -444,8 +447,8 @@ export default function FacialVerificationScreen({
           )}
 
           {confirmationMessage && !errorMessage && (
-            <View className="mt-6 rounded-xl bg-[#EAF1FB] px-4 py-3">
-              <Text className="text-center text-[14px] font-outfit text-[#35506E]">
+            <View className="mt-6 rounded-xl bg-[#EAF1FB] dark:bg-[#1E2D4A] px-4 py-3">
+              <Text className="text-center text-[14px] font-outfit text-[#35506E] dark:text-[#93C5FD]">
                 {confirmationMessage}
               </Text>
             </View>

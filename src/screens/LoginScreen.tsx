@@ -1,4 +1,5 @@
 import LoadingOverlay from "@/components/LoadingOverlay";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 import * as Application from "expo-application";
 import { LinearGradient } from "expo-linear-gradient";
 import { requireOptionalNativeModule } from "expo-modules-core";
@@ -150,6 +151,8 @@ function isDeviceNotRegisteredError(value: unknown): boolean {
 }
 
 function PasscodeDots({ length, filled }: { length: number; filled: number }) {
+  const { isDark } = useAppTheme();
+
   return (
     <View
       accessibilityLabel={`${filled} of ${length} digits entered`}
@@ -165,15 +168,23 @@ function PasscodeDots({ length, filled }: { length: number; filled: number }) {
                 height: 16,
                 borderRadius: 8,
                 borderWidth: isFilled ? 0 : 2,
-                borderColor: "#C9D3DF",
-                backgroundColor: isFilled ? BLUE : "transparent",
+                borderColor: isFilled
+                  ? "transparent"
+                  : isDark
+                    ? "#475569"
+                    : "#C9D3DF",
+                backgroundColor: isFilled
+                  ? isDark
+                    ? "#60A5FA"
+                    : BLUE
+                  : "transparent",
                 transform: [{ scale: isFilled ? 1.1 : 1 }]
               }}
             />
             {i < length - 1 && (
               <Text
                 accessibilityElementsHidden
-                className="mx-1 text-[15px] font-outfit-medium text-[#AAB6C5]"
+                className="mx-1 text-[15px] font-outfit-medium text-[#AAB6C5] dark:text-[#475569]"
               >
                 -
               </Text>
@@ -196,6 +207,7 @@ function KeypadButton({
   icon?: React.ReactNode;
   height: number;
 }) {
+  const { isDark } = useAppTheme();
   const keySize = Math.min(height - 8, 66);
   return (
     <Pressable
@@ -213,16 +225,22 @@ function KeypadButton({
             borderRadius: keySize / 2,
             alignItems: "center",
             justifyContent: "center",
-            // Digit keys are white discs; the delete key stays flat.
+            // Digit keys are white discs in light mode, dark blue in dark mode; delete key stays flat.
             backgroundColor: icon
               ? pressed
-                ? "#E3E9F1"
+                ? isDark
+                  ? "#1E2D4A"
+                  : "#E3E9F1"
                 : "transparent"
               : pressed
-                ? "#DCE6F4"
-                : "#FFFFFF",
+                ? isDark
+                  ? "#2A3D63"
+                  : "#DCE6F4"
+                : isDark
+                  ? "#1E2D4A"
+                  : "#FFFFFF",
             shadowColor: "#0A3155",
-            shadowOpacity: icon || pressed ? 0 : 0.08,
+            shadowOpacity: icon || pressed ? 0 : isDark ? 0.2 : 0.08,
             shadowRadius: 4,
             shadowOffset: { width: 0, height: 2 },
             elevation: icon || pressed ? 0 : 1
@@ -231,7 +249,7 @@ function KeypadButton({
           {icon ? (
             icon
           ) : (
-            <Text className="text-[26px] font-outfit-medium text-[#12294A]">
+            <Text className="text-[26px] font-outfit-medium text-[#12294A] dark:text-white">
               {label}
             </Text>
           )}
@@ -271,6 +289,7 @@ export default function LoginScreen({
   const [showDeviceConflictModal, setShowDeviceConflictModal] = useState(false);
   const [deviceConflictPhoneNumber, setDeviceConflictPhoneNumber] = useState("");
   const [isInitiatingDeviceChange, setIsInitiatingDeviceChange] = useState(false);
+  const { isDark } = useAppTheme();
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const compact = screenHeight < 760;
@@ -640,7 +659,7 @@ export default function LoginScreen({
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#070E1E]" edges={["bottom"]}>
       <LinearGradient
         colors={["#04325C", "#064783", "#1F67B3"]}
         start={{ x: 0.1, y: 0 }}
@@ -665,6 +684,17 @@ export default function LoginScreen({
             left: 0
           }}
         />
+
+        <View
+          style={{
+            position: "absolute",
+            top: insets.top + 10,
+            right: 18,
+            zIndex: 10
+          }}
+        >
+          <ThemeToggleButton />
+        </View>
 
         <View className="w-full max-w-[520px] items-center">
           {/* Avatar with translucent halo */}
@@ -727,18 +757,18 @@ export default function LoginScreen({
       >
         {showPhoneField && (
           <>
-            <Text className="text-[14px] font-outfit-normal text-[#6B7280]">
+            <Text className="text-[14px] font-outfit-normal text-[#6B7280] dark:text-[#94A3B8]">
               Phone number
             </Text>
             <View
-              className="mt-2 flex-row items-start rounded-2xl border-2 px-4 py-3"
+              className="mt-1 flex-row items-start rounded-2xl border-2 px-4 "
               style={{
-                borderColor: "#D9E2EC",
-                backgroundColor: "#F8F9FB"
+                borderColor: isDark ? "#2A3D63" : "#D9E2EC",
+                backgroundColor: isDark ? "#131F35" : "#F8F9FB"
               }}
             >
               <TextInput
-                className="flex-1 text-[16px] font-outfit-medium text-[#102F62]"
+                className="text-[16px] font-outfit-medium text-[#102F62] dark:text-white"
                 placeholder=""
                 placeholderTextColor="#9CA3AF"
                 value={phoneNumber}
@@ -751,9 +781,9 @@ export default function LoginScreen({
           </>
         )}
 
-        <Text className="text-center text-[21px] font-outfit-semibold text-[#102F62]">
+        {!showPhoneField && <Text className="text-center text-[21px] font-outfit-semibold text-[#102F62] dark:text-white">
           {!showPhoneField && "Enter your passcode"}
-        </Text>
+        </Text>}
 
         <PasscodeDots length={PASSCODE_LENGTH} filled={passcode.length} />
 
@@ -771,7 +801,7 @@ export default function LoginScreen({
 
         <View
           className="mt-2 px-3 py-2"
-          style={{ backgroundColor: "#F2F5F9", borderRadius: 28 }}
+          style={{ backgroundColor: isDark ? "#131F35" : "#F2F5F9", borderRadius: 28 }}
         >
           {keypadRows.map((row, i) => (
             <View key={i} className="flex-row">
@@ -794,7 +824,7 @@ export default function LoginScreen({
             />
             <KeypadButton
               onPress={handleDelete}
-              icon={<Delete size={24} color={BLUE_INK} strokeWidth={1.9} />}
+              icon={<Delete size={24} color={isDark ? "#93C5FD" : BLUE_INK} strokeWidth={1.9} />}
               height={keypadRowHeight}
             />
           </View>
@@ -806,13 +836,13 @@ export default function LoginScreen({
           hitSlop={8}
           className="mt-3 items-center py-2 active:opacity-70"
         >
-          <Text className="text-[14px] font-outfit-semibold text-[#174A8E]">
+          <Text className="text-[14px] font-outfit-semibold text-[#174A8E] dark:text-[#60A5FA]">
             Forgot passcode?
           </Text>
         </Pressable>
 
         {biometricEnabled && !biometricAvailable && biometricMessage ? (
-          <Text className="mt-2 text-center text-[12px] font-outfit text-[#7A8491]">
+          <Text className="mt-2 text-center text-[12px] font-outfit text-[#7A8491] dark:text-[#94A3B8]">
             {biometricMessage}
           </Text>
         ) : null}
@@ -829,15 +859,15 @@ export default function LoginScreen({
             className={`mt-4 h-14 flex-row items-center justify-center self-center rounded-full px-6 active:bg-[#E3EEFC] ${isEnablingBiometric ? "opacity-60" : ""}`}
             style={{
               width: Math.min(screenWidth - 48, 360),
-              backgroundColor: "#EEF4FD",
+              backgroundColor: isDark ? "#131F35" : "#EEF4FD",
               borderWidth: 1.5,
-              borderColor: "#B9D0F5"
+              borderColor: isDark ? "#2A3D63" : "#B9D0F5"
             }}
           >
-            <Fingerprint size={25} color={BLUE_INK} strokeWidth={1.8} />
+            <Fingerprint size={25} color={isDark ? "#93C5FD" : BLUE_INK} strokeWidth={1.8} />
             <Text
               className="ml-3 text-[15px] font-outfit-semibold"
-              style={{ color: BLUE_INK }}
+              style={{ color: isDark ? "#93C5FD" : BLUE_INK }}
             >
               {isEnablingBiometric
                 ? "Enabling biometric login..."
@@ -854,7 +884,7 @@ export default function LoginScreen({
           hitSlop={8}
           className="mt-5 items-center py-2 active:opacity-70"
         >
-          <Text className="text-[14px] font-outfit text-[#6F7783]">
+          <Text className="text-[14px] font-outfit text-[#6F7783] dark:text-[#94A3B8]">
             Set up another account
           </Text>
         </Pressable>
@@ -883,7 +913,7 @@ export default function LoginScreen({
           }}
         >
           <View
-            className="w-full max-w-sm rounded-3xl bg-white p-6"
+            className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#131F35] p-6"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
@@ -892,11 +922,11 @@ export default function LoginScreen({
               elevation: 24
             }}
           >
-            <Text className="text-center text-[22px] font-outfit-semibold text-[#1B2D4A]">
+            <Text className="text-center text-[22px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
               Device Conflict
             </Text>
 
-            <Text className="mt-3 text-center text-[15px] font-outfit text-[#67787F] leading-[22px]">
+            <Text className="mt-3 text-center text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8] leading-[22px]">
               Your account is linked to another device. Do you want to change device?
             </Text>
 
@@ -904,9 +934,9 @@ export default function LoginScreen({
               <Pressable
                 accessibilityRole="button"
                 onPress={handleDeviceConflictNo}
-                className="flex-1 h-12 flex-row items-center justify-center rounded-2xl border border-[#DDE3EA] bg-white active:opacity-70"
+                className="flex-1 h-12 flex-row items-center justify-center rounded-2xl border border-[#DDE3EA] dark:border-[#2A3D63] bg-white dark:bg-[#1E2D4A] active:opacity-70"
               >
-                <Text className="text-[17px] font-outfit-semibold text-[#1B2D4A]">
+                <Text className="text-[17px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                   No
                 </Text>
               </Pressable>

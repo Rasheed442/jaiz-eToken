@@ -10,6 +10,7 @@ import Animated, {
     withSpring
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppTheme } from "@/lib/theme";
 
 type EtokenActivatedScreenProps = {
   onGoToDashboard: () => void;
@@ -20,6 +21,7 @@ export default function EtokenActivatedScreen({
   onGoToDashboard,
   deviceLabel = "This device"
 }: EtokenActivatedScreenProps) {
+  const { isDark } = useAppTheme();
   const badgeScale = useSharedValue(0);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function EtokenActivatedScreen({
   }));
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F3F5F7]">
+    <SafeAreaView className="flex-1 bg-[#F3F5F7] dark:bg-[#070E1E]">
       <View className="flex-1 px-6">
         <View className="flex-1 items-center justify-center">
           <Animated.View
@@ -57,24 +59,24 @@ export default function EtokenActivatedScreen({
           </Animated.View>
 
           <Animated.View entering={FadeIn.duration(400).delay(300)}>
-            <Text className="mt-7 text-center text-[28px] font-outfit-semibold text-[#1B2D4A]">
+            <Text className="mt-7 text-center text-[28px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
               eToken Activated
             </Text>
-            <Text className="mt-3 max-w-[280px] text-center text-[15px] font-outfit text-[#67787F]">
+            <Text className="mt-3 max-w-[280px] text-center text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
               Your device is now registered. You can generate secure codes anytime.
             </Text>
           </Animated.View>
 
           <Animated.View
             entering={FadeIn.duration(400).delay(450)}
-            className="mt-8 w-full flex-row items-center gap-3 rounded-2xl bg-[#D6E4F5] px-4 py-4"
+            className="mt-8 w-full flex-row items-center gap-3 rounded-2xl bg-[#D6E4F5] dark:bg-[#1E3A5F] px-4 py-4"
           >
-            <Smartphone size={22} color="#123E7C" />
+            <Smartphone size={22} color={isDark ? "#60A5FA" : "#123E7C"} />
             <View>
-              <Text className="text-[12px] font-outfit text-[#5B7699]">
+              <Text className="text-[12px] font-outfit text-[#5B7699] dark:text-[#94A3B8]">
                 Device
               </Text>
-              <Text className="text-[15px] font-outfit-semibold text-[#1B2D4A]">
+              <Text className="text-[15px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                 {deviceLabel} · Registered just now
               </Text>
             </View>

@@ -1,4 +1,5 @@
 import { authStorage } from "@/lib/auth/storage";
+import { useAppTheme } from "@/lib/theme";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
 import { requireOptionalNativeModule } from "expo-modules-core";
@@ -82,14 +83,15 @@ function formatDateTime(value: string | null | undefined, fallback: string) {
 }
 
 function BackButton({ onPress }: { onPress: () => void }) {
+  const { isDark } = useAppTheme();
   return (
     <Pressable
       accessibilityLabel="Go back"
       accessibilityRole="button"
-      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ECEDEE] active:opacity-70"
+      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ECEDEE] dark:bg-[#1E2D4A] active:opacity-70"
       onPress={onPress}
     >
-      <ChevronLeft size={22} color="black" />
+      <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "#000000"} />
     </Pressable>
   );
 }
@@ -106,11 +108,11 @@ function DetailRow({
   return (
     <View
       className={`flex-row items-center justify-between py-4 ${
-        isLast ? "" : "border-b border-[#EFF1F3]"
+        isLast ? "" : "border-b border-[#EFF1F3] dark:border-[#1E2D4A]"
       }`}
     >
-      <Text className="text-[15px] font-outfit text-[#67787F]">{label}</Text>
-      <Text className="text-[15px] font-outfit-semibold text-[#1B2D4A]">
+      <Text className="text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">{label}</Text>
+      <Text className="text-[15px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
         {value}
       </Text>
     </View>
@@ -127,6 +129,7 @@ export default function DeviceDetailsScreen({
   lastUsed = "------",
   isActive
 }: DeviceDetailsScreenProps) {
+  const { isDark } = useAppTheme();
   const [storedDetails, setStoredDetails] =
     useState<StoredDeviceDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -312,41 +315,41 @@ export default function DeviceDetailsScreen({
       : formatDateTime(storedDetails?.lastUsedAt, "Not yet used");
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F3F5F7]">
+    <SafeAreaView className="flex-1 bg-[#F3F5F7] dark:bg-[#070E1E]">
       <ScrollView className="flex-1" contentContainerClassName="px-6 pb-10">
         <View className="pt-6">
           <BackButton onPress={onBack} />
         </View>
 
-        <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+        <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
           Device Details
         </Text>
-        <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
+        <Text className="mt-2 text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
           Manage the device linked to your eToken.
         </Text>
 
         {loading && (
           <View className="mt-5 flex-row items-center gap-2">
             <ActivityIndicator size="small" color="#123E7C" />
-            <Text className="text-[14px] font-outfit text-[#67787F]">
+            <Text className="text-[14px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
               Loading device details…
             </Text>
           </View>
         )}
 
         {/* Hero device card */}
-        <View className="mt-7 items-center rounded-3xl bg-white px-6 py-8">
-          <View className="h-[88px] w-[88px] items-center justify-center rounded-full bg-[#E8EEFB]">
-            <Smartphone size={34} color="#123E7C" />
+        <View className="mt-7 items-center rounded-3xl bg-white dark:bg-[#131F35] px-6 py-8">
+          <View className="h-[88px] w-[88px] items-center justify-center rounded-full bg-[#E8EEFB] dark:bg-[#1E2D4A]">
+            <Smartphone size={34} color={isDark ? "#60A5FA" : "#123E7C"} />
           </View>
 
-          <Text className="mt-5 text-[20px] font-outfit-semibold text-[#1B2D4A]">
+          <Text className="mt-5 text-[20px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
             {displayedModel}
           </Text>
 
           <View
             className={`mt-4 flex-row items-center gap-2 rounded-full px-4 py-2 ${
-              displayedActive ? "bg-[#E7F7EE]" : "bg-[#FDECEC]"
+              displayedActive ? "bg-[#E7F7EE] dark:bg-[#123824]" : "bg-[#FDECEC] dark:bg-[#3B1E1E]"
             }`}
           >
             <View
@@ -365,7 +368,7 @@ export default function DeviceDetailsScreen({
         </View>
 
         {/* Details list */}
-        <View className="mt-5 rounded-3xl bg-white px-5 py-1">
+        <View className="mt-5 rounded-3xl bg-white dark:bg-[#131F35] px-5 py-1">
           <DetailRow label="Model" value={displayedModel} />
           <DetailRow label="Device ID" value={displayedDeviceId} />
           <DetailRow label="Location" value={location} />
@@ -373,12 +376,12 @@ export default function DeviceDetailsScreen({
           <DetailRow label="Last used" value={displayedLastUsed} isLast />
         </View>
 
-        <View className="mt-5 flex-row items-center justify-between rounded-3xl bg-white px-5 py-4">
+        <View className="mt-5 flex-row items-center justify-between rounded-3xl bg-white dark:bg-[#131F35] px-5 py-4">
           <View className="mr-4 flex-1">
-            <Text className="text-[16px] font-outfit-semibold text-[#1B2D4A]">
+            <Text className="text-[16px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
               Biometric login
             </Text>
-            <Text className="mt-1 text-[13px] font-outfit text-[#67787F]">
+            <Text className="mt-1 text-[13px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
               {biometricMessage ||
                 (biometricEnabled
                   ? `Use ${biometricLabel} to sign in securely.`
@@ -402,7 +405,7 @@ export default function DeviceDetailsScreen({
                 (!localAuthentication || !biometricAvailable))
             }
             className={`h-8 w-14 justify-center rounded-full px-1 ${
-              biometricEnabled ? "bg-[#123E7C]" : "bg-[#C9CED6]"
+              biometricEnabled ? "bg-[#123E7C] dark:bg-[#2563EB]" : "bg-[#C9CED6] dark:bg-[#334155]"
             } ${isUpdatingBiometrics ? "opacity-60" : ""}`}
           >
             <View
@@ -417,12 +420,12 @@ export default function DeviceDetailsScreen({
         <Pressable
           accessibilityRole="button"
           onPress={onRegisterNewDevice}
-          className="mt-8 flex-row items-center justify-center gap-3 rounded-2xl border-[1.5px] border-[#123E7C] px-5 py-5 active:opacity-70"
+          className="mt-8 flex-row items-center justify-center gap-3 rounded-2xl border-[1.5px] border-[#123E7C] dark:border-[#3B82F6] px-5 py-5 active:opacity-70"
         >
-          <Text className="text-[17px] font-outfit-semibold text-[#123E7C]">
+          <Text className="text-[17px] font-outfit-semibold text-[#123E7C] dark:text-[#60A5FA]">
             Register a New Device
           </Text>
-          <ArrowRight size={20} color="#123E7C" />
+          <ArrowRight size={20} color={isDark ? "#60A5FA" : "#123E7C"} />
         </Pressable>
 
         {/* <Pressable

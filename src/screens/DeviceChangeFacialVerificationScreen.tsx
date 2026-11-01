@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
 import type { StartLivelinessData } from "../lib/api/types";
 import { METAMAP_CLIENT_ID } from "../lib/metamap";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 type DeviceChangeFacialVerificationScreenProps = {
   onBack: () => void;
@@ -32,24 +33,24 @@ function ProgressBar({
 }) {
   const progress = Math.min(1, Math.max(0, step / totalSteps));
   return (
-    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5]">
+    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5] dark:bg-[#1E3A5F]">
       <View
-        className="h-full rounded-full bg-[#123E7C]"
+        className="h-full rounded-full bg-[#123E7C] dark:bg-[#60A5FA]"
         style={{ width: `${progress * 100}%` }}
       />
     </View>
   );
 }
 
-function BackButton({ onPress }: { onPress: () => void }) {
+function BackButton({ onPress, isDark }: { onPress: () => void; isDark?: boolean }) {
   return (
     <Pressable
       accessibilityLabel="Go back"
       accessibilityRole="button"
-      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] active:opacity-70"
+      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] dark:bg-[#1E2D4A] active:opacity-70"
       onPress={onPress}
     >
-      <ChevronLeft size={22} color="black" />
+      <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "black"} />
     </Pressable>
   );
 }
@@ -94,6 +95,7 @@ export default function DeviceChangeFacialVerificationScreen({
   step = 4,
   totalSteps = 6
 }: DeviceChangeFacialVerificationScreenProps) {
+  const { isDark } = useAppTheme();
   const [isStarting, setIsStarting] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isFlowOpen, setIsFlowOpen] = useState(false);
@@ -420,13 +422,14 @@ export default function DeviceChangeFacialVerificationScreen({
   const busy = isPreparing || isStarting || isFlowOpen || isConfirming;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F3F5F7]">
+    <SafeAreaView className="flex-1 bg-[#F3F5F7] dark:bg-[#070E1E]">
       <View className="px-6 pt-14">
         <View className="flex-row items-center pt-6">
-          <BackButton onPress={onBack} />
+          <BackButton onPress={onBack} isDark={isDark} />
           <View className="ml-3 flex-1">
             <ProgressBar step={step} totalSteps={totalSteps} />
           </View>
+          <ThemeToggleButton />
         </View>
       </View>
 
@@ -436,13 +439,13 @@ export default function DeviceChangeFacialVerificationScreen({
         keyboardShouldPersistTaps="handled"
       >
         <Animated.View entering={FadeIn.duration(400)}>
-          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7]">
-            <ScanFace size={24} color="#123E7C" />
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7] dark:bg-[#1E2D4A]">
+            <ScanFace size={24} color={isDark ? "#60A5FA" : "#123E7C"} />
           </View>
-          <Text className="mt-5 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+          <Text className="mt-5 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
             Face verification
           </Text>
-          <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
+          <Text className="mt-2 text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
             We need to verify your face to complete the device change for your security.
           </Text>
 
@@ -458,8 +461,8 @@ export default function DeviceChangeFacialVerificationScreen({
           )}
 
           {confirmationMessage && !errorMessage && (
-            <View className="mt-5 rounded-xl border border-[#D4DFFD] bg-[#EEF2F6] px-4 py-3">
-              <Text className="text-[13px] font-outfit-medium text-[#193F7F]">
+            <View className="mt-5 rounded-xl border border-[#D4DFFD] dark:border-[#2A3D63] bg-[#EEF2F6] dark:bg-[#1E2D4A] px-4 py-3">
+              <Text className="text-[13px] font-outfit-medium text-[#193F7F] dark:text-[#93C5FD]">
                 {confirmationMessage}
               </Text>
             </View>

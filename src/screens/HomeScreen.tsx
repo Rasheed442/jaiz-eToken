@@ -1,6 +1,7 @@
 import { registrationApi } from "@/lib/api";
 import { authStorage } from "@/lib/auth/storage";
 import { createTotp } from "@/lib/auth/totp";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 import * as Application from "expo-application";
 import * as Clipboard from "expo-clipboard";
 import * as Device from "expo-device";
@@ -8,6 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
   AlertCircle,
   Copy,
+  Delete,
   LogOut,
   RefreshCw,
   Smartphone
@@ -64,6 +66,7 @@ export default function HomeScreen({
   const [passcodeInput, setPasscodeInput] = useState("");
   const [isVerifyingPasscode, setIsVerifyingPasscode] = useState(false);
   const [accountNumber, setAccountNumber] = useState("");
+  const { isDark } = useAppTheme();
   const progress = useSharedValue(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const totpRef = useRef<ReturnType<typeof createTotp> | null>(null);
@@ -290,7 +293,7 @@ export default function HomeScreen({
         if (!provisionResponse.success || !provisionResponse.data?.secret) {
           showToastMessage(
             provisionResponse.message ||
-              "Could not set up your eToken on this device.",
+            "Could not set up your eToken on this device.",
             "error"
           );
           return;
@@ -368,7 +371,7 @@ export default function HomeScreen({
   const timeLabel = `${minutes}:${seconds.toString().padStart(2, "0")}`;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8F8F8]">
+    <SafeAreaView className="flex-1 bg-[#F8F8F8] dark:bg-[#070E1E]">
       <Toast
         visible={showToast}
         message={toastMessage}
@@ -385,32 +388,25 @@ export default function HomeScreen({
               </Text>
             </View>
             <View className="ml-3">
-              <Text className="text-[15px] font-outfit-semibold text-[#1B2D4A]">
+              <Text className="text-[15px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                 {fullName}
               </Text>
-              <Text className="text-[13px] font-outfit text-[#67787F]">
+              <Text className="text-[13px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
                 Personal · {accountNumber || "----"}
               </Text>
             </View>
           </View>
 
           <View className="flex-row gap-2 items-center">
-            {/* <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Notifications"
-              onPress={onNotificationsPress}
-              className="h-11 w-11 items-center justify-center rounded-full bg-white active:opacity-70"
-            >
-              <Bell size={20} color="#1B2D4A" />
-            </Pressable> */}
+            <ThemeToggleButton />
 
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Logout"
               onPress={handleLogout}
-              className="h-11 w-11 items-center justify-center rounded-full bg-white active:opacity-70"
+              className="h-11 w-11 items-center justify-center rounded-full bg-white dark:bg-[#1E2D4A] active:opacity-70"
             >
-              <LogOut size={20} color="#1B2D4A" />
+              <LogOut size={20} color={isDark ? "#E2E8F0" : "#1B2D4A"} />
             </Pressable>
           </View>
         </View>
@@ -489,14 +485,13 @@ export default function HomeScreen({
             accessibilityRole="button"
             onPress={handleCopy}
             disabled={code === "------" || isGenerating}
-            className={`flex-1 items-center rounded-2xl bg-white px-4 py-4 active:opacity-70 ${
-              code === "------" || isGenerating ? "opacity-50" : ""
-            }`}
+            className={`flex-1 items-center rounded-2xl bg-white dark:bg-[#131F35] px-4 py-4 active:opacity-70 ${code === "------" || isGenerating ? "opacity-50" : ""
+              }`}
           >
-            <View className="h-9 w-9 items-center justify-center rounded-full bg-[#EAF0FB]">
-              <Copy size={18} color="#123E7C" />
+            <View className="h-9 w-9 items-center justify-center rounded-full bg-[#EAF0FB] dark:bg-[#1E2E48]">
+              <Copy size={18} color={isDark ? "#60A5FA" : "#123E7C"} />
             </View>
-            <Text className="mt-2 text-[14px] font-outfit-medium text-[#1B2D4A]">
+            <Text className="mt-2 text-[14px] font-outfit-medium text-[#1B2D4A] dark:text-[#E2E8F0]">
               {copied ? "Copied!" : "Copy code"}
             </Text>
           </Pressable>
@@ -505,18 +500,17 @@ export default function HomeScreen({
             accessibilityRole="button"
             onPress={handleGenerateNew}
             disabled={isGenerating || isVerifyingPasscode}
-            className={`flex-1 items-center rounded-2xl bg-white px-4 py-4 active:opacity-70 ${
-              isGenerating || isVerifyingPasscode ? "opacity-50" : ""
-            }`}
+            className={`flex-1 items-center rounded-2xl bg-white dark:bg-[#131F35] px-4 py-4 active:opacity-70 ${isGenerating || isVerifyingPasscode ? "opacity-50" : ""
+              }`}
           >
-            <View className="h-9 w-9 items-center justify-center rounded-full bg-[#EAF0FB]">
+            <View className="h-9 w-9 items-center justify-center rounded-full bg-[#EAF0FB] dark:bg-[#1E2E48]">
               {isGenerating ? (
-                <ActivityIndicator size="small" color="#123E7C" />
+                <ActivityIndicator size="small" color={isDark ? "#60A5FA" : "#123E7C"} />
               ) : (
-                <RefreshCw size={18} color="#123E7C" />
+                <RefreshCw size={18} color={isDark ? "#60A5FA" : "#123E7C"} />
               )}
             </View>
-            <Text className="mt-2 text-[14px] font-outfit-medium text-[#1B2D4A]">
+            <Text className="mt-2 text-[14px] font-outfit-medium text-[#1B2D4A] dark:text-[#E2E8F0]">
               Generate OTP
             </Text>
           </Pressable>
@@ -525,28 +519,28 @@ export default function HomeScreen({
         {/* Device card */}
         <Pressable
           onPress={onManageDevice}
-          className="mt-4 flex-row items-center justify-between rounded-2xl bg-white px-4 py-4 active:opacity-70"
+          className="mt-4 flex-row items-center justify-between rounded-2xl bg-white dark:bg-[#131F35] px-4 py-4 active:opacity-70"
         >
           <View className="flex-row items-center">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#F0F1F2]">
-              <Smartphone size={18} color="#1B2D4A" />
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#F0F1F2] dark:bg-[#1E2E48]">
+              <Smartphone size={18} color={isDark ? "#E2E8F0" : "#1B2D4A"} />
             </View>
             <View className="ml-3">
-              <Text className="text-[15px] font-outfit-semibold text-[#1B2D4A]">
+              <Text className="text-[15px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                 This device
               </Text>
-              <Text className="text-[13px] font-outfit text-[#67787F]">
+              <Text className="text-[13px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
                 {deviceName} · {deviceLocation}
               </Text>
             </View>
           </View>
-          <Text className="text-[14px] font-outfit-semibold text-[#123E7C]">
+          <Text className="text-[14px] font-outfit-semibold text-[#123E7C] dark:text-[#60A5FA]">
             Manage
           </Text>
         </Pressable>
 
         {/* Footer */}
-        <View className="mt-auto flex-row items-center justify-center border-y border-gray-100 py-3">
+        <View className="mt-auto flex-row items-center justify-center border-y border-gray-100 dark:border-gray-800 py-3">
           <Image
             source={require("../../assets/images/footerjlogo.png")}
             accessibilityLabel="Jaiz eToken"
@@ -565,7 +559,7 @@ export default function HomeScreen({
       >
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
           <View
-            className="w-full max-w-sm rounded-3xl bg-white p-6"
+            className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#131F35] p-6"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
@@ -574,15 +568,15 @@ export default function HomeScreen({
               elevation: 8
             }}
           >
-            <View className="h-16 w-16 items-center justify-center self-center rounded-full bg-[#FDECEC]">
+            <View className="h-16 w-16 items-center justify-center self-center rounded-full bg-[#FDECEC] dark:bg-[#3B1E1E]">
               <AlertCircle size={32} color="#B3261E" />
             </View>
 
-            <Text className="mt-5 text-center text-[22px] font-outfit-semibold text-[#1B2D4A]">
+            <Text className="mt-5 text-center text-[22px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
               Logout
             </Text>
 
-            <Text className="mt-3 text-center text-[15px] font-outfit text-[#67787F] leading-[22px]">
+            <Text className="mt-3 text-center text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8] leading-[22px]">
               Are you sure you want to logout? You'll need to enter your
               passcode to access your eToken again.
             </Text>
@@ -592,9 +586,9 @@ export default function HomeScreen({
                 accessibilityRole="button"
                 onPress={() => !isLoggingOut && setShowLogoutModal(false)}
                 disabled={isLoggingOut}
-                className="flex-1 h-12 flex-row items-center justify-center rounded-2xl border border-[#DDE3EA] bg-white active:opacity-70"
+                className="flex-1 h-12 flex-row items-center justify-center rounded-2xl border border-[#DDE3EA] dark:border-[#2B3B52] bg-white dark:bg-[#1E2E48] active:opacity-70"
               >
-                <Text className="text-[17px] font-outfit-semibold text-[#1B2D4A]">
+                <Text className="text-[17px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                   Cancel
                 </Text>
               </Pressable>
@@ -603,9 +597,8 @@ export default function HomeScreen({
                 accessibilityRole="button"
                 onPress={confirmLogout}
                 disabled={isLoggingOut}
-                className={`flex-1 h-12 flex-row items-center justify-center rounded-2xl bg-[#B3261E] active:opacity-85 ${
-                  isLoggingOut ? "opacity-70" : ""
-                }`}
+                className={`flex-1 h-12 flex-row items-center justify-center rounded-2xl bg-[#B3261E] active:opacity-85 ${isLoggingOut ? "opacity-70" : ""
+                  }`}
               >
                 {isLoggingOut ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
@@ -625,147 +618,151 @@ export default function HomeScreen({
         visible={showPasscodeModal}
         transparent
         animationType="fade"
-        onRequestClose={() =>
-          !isVerifyingPasscode && setShowPasscodeModal(false)
-        }
+        statusBarTranslucent
+        onRequestClose={() => !isVerifyingPasscode && setShowPasscodeModal(false)}
       >
-        <View className="flex-1 items-center justify-center bg-black/50 px-6">
+        <View className="flex-1 items-center justify-center bg-black/60 px-6">
           <View
-            className="w-full max-w-sm rounded-3xl bg-white p-6"
+            className="w-full max-w-sm rounded-[28px] bg-white dark:bg-[#131F35] px-6 pb-6 pt-7"
             style={{
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-              elevation: 8
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.2,
+              shadowRadius: 24,
+              elevation: 12
             }}
           >
-            <View className="h-16 w-16 items-center justify-center self-center rounded-full bg-[#EAF0FB]">
-              <Smartphone size={32} color="#123E7C" />
+            {/* Header */}
+            <View className="h-[72px] w-[72px] items-center justify-center self-center rounded-full bg-[#EAF0FB] dark:bg-[#1E2E48]">
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-white dark:bg-[#131F35]">
+                <Smartphone size={28} color={isDark ? "#60A5FA" : "#123E7C"} />
+              </View>
             </View>
 
-            <Text className="mt-5 text-center text-[22px] font-outfit-semibold text-[#1B2D4A]">
+            <Text className="mt-5 text-center text-[22px] font-outfit-semibold tracking-tight text-[#1B2D4A] dark:text-white">
               Set Up This Device’s eToken
             </Text>
 
-            <Text className="mt-3 text-center text-[15px] font-outfit text-[#67787F] leading-[22px]">
-              Enter your 6-digit passcode to securely provision a TOTP secret
-              for this device.
+            <Text className="mt-2 px-2 text-center text-[14px] font-outfit leading-[21px] text-[#67787F] dark:text-[#94A3B8]">
+              Enter your 6-digit passcode to securely provision a TOTP secret for
+              this device.
             </Text>
 
-            <View className="mt-6">
-              <View className="h-14 flex-row items-center justify-center gap-3">
-                {[0, 1, 2, 3, 4, 5].map((index) => (
+            {/* Passcode indicators */}
+            <View className="mt-6 flex-row items-center justify-center gap-2.5">
+              {[0, 1, 2, 3, 4, 5].map((index) => {
+                const filled = !!passcodeInput[index];
+                const active = index === passcodeInput.length;
+                return (
                   <View
                     key={index}
-                    className={`h-12 w-10 items-center justify-center rounded-lg border-2 ${
-                      passcodeInput[index]
-                        ? "border-[#123E7C] bg-[#EAF0FB]"
-                        : "border-[#DDE3EA]"
-                    }`}
+                    className={`h-[52px] w-11 items-center justify-center rounded-xl border-2 ${filled
+                      ? "border-[#123E7C] bg-[#EAF0FB] dark:border-[#60A5FA] dark:bg-[#1E2E48]"
+                      : active
+                        ? "border-[#123E7C]/50 bg-white dark:border-[#60A5FA]/50 dark:bg-[#131F35]"
+                        : "border-[#DDE3EA] bg-[#F8FAFC] dark:border-[#2B3B52] dark:bg-[#0F1A2E]"
+                      }`}
                   >
-                    <Text className="text-[20px] font-outfit-semibold text-[#1B2D4A]">
-                      {passcodeInput[index] ? "•" : ""}
-                    </Text>
+                    {filled ? (
+                      <View className="h-3 w-3 rounded-full bg-[#123E7C] dark:bg-[#60A5FA]" />
+                    ) : null}
                   </View>
-                ))}
-              </View>
-
-              <View className="mt-6 flex-row gap-3">
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() =>
-                    !isVerifyingPasscode && setShowPasscodeModal(false)
-                  }
-                  disabled={isVerifyingPasscode}
-                  className="flex-1 h-12 flex-row items-center justify-center rounded-2xl border border-[#DDE3EA] bg-white active:opacity-70"
-                >
-                  <Text className="text-[17px] font-outfit-semibold text-[#1B2D4A]">
-                    Cancel
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={handlePasscodeSubmit}
-                  disabled={isVerifyingPasscode || passcodeInput.length !== 6}
-                  className={`flex-1 h-12 flex-row items-center justify-center rounded-2xl bg-[#123E7C] active:opacity-85 ${
-                    isVerifyingPasscode || passcodeInput.length !== 6
-                      ? "opacity-70"
-                      : ""
-                  }`}
-                >
-                  {isVerifyingPasscode ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text className="text-[17px] font-outfit-semibold text-white">
-                      Set Up Token
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
+                );
+              })}
             </View>
 
             {/* Numeric Keypad */}
-            <View className="mt-4">
+            <View className="mt-6 gap-3">
               {[
                 ["1", "2", "3"],
                 ["4", "5", "6"],
                 ["7", "8", "9"]
               ].map((row, rowIndex) => (
-                <View key={rowIndex} className="flex-row justify-center gap-4">
+                <View key={rowIndex} className="flex-row justify-center gap-3">
                   {row.map((num) => (
                     <Pressable
                       key={num}
+                      accessibilityRole="button"
+                      accessibilityLabel={num}
+                      disabled={isVerifyingPasscode}
                       onPress={() => {
                         if (passcodeInput.length < 6) {
                           setPasscodeInput((prev) => prev + num);
                         }
                       }}
-                      className="h-14 w-20 items-center justify-center rounded-2xl bg-[#F8F8F8] active:bg-[#EAF0FB]"
+                      className="h-14 flex-1 items-center justify-center rounded-2xl bg-[#F3F6FA] active:bg-[#EAF0FB] dark:bg-[#1E2E48] dark:active:bg-[#2B3B52]"
                     >
-                      <Text className="text-[24px] font-outfit-semibold text-[#1B2D4A]">
+                      <Text className="text-[24px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                         {num}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
               ))}
-              <View className="mt-4 flex-row justify-center gap-4">
+
+              <View className="flex-row justify-center gap-3">
+                <View className="h-14 flex-1" />
                 <Pressable
-                  onPress={() => {
-                    setShowPasscodeModal(false);
-                    setPasscodeInput("");
-                  }}
-                  className="h-14 w-20 items-center justify-center rounded-2xl bg-[#F8F8F8] active:bg-[#EAF0FB]"
-                >
-                  <Text className="text-[17px] font-outfit-semibold text-[#67787F]">
-                    Cancel
-                  </Text>
-                </Pressable>
-                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="0"
+                  disabled={isVerifyingPasscode}
                   onPress={() => {
                     if (passcodeInput.length < 6) {
                       setPasscodeInput((prev) => prev + "0");
                     }
                   }}
-                  className="h-14 w-20 items-center justify-center rounded-2xl bg-[#F8F8F8] active:bg-[#EAF0FB]"
+                  className="h-14 flex-1 items-center justify-center rounded-2xl bg-[#F3F6FA] active:bg-[#EAF0FB] dark:bg-[#1E2E48] dark:active:bg-[#2B3B52]"
                 >
-                  <Text className="text-[24px] font-outfit-semibold text-[#1B2D4A]">
+                  <Text className="text-[24px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                     0
                   </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => {
-                    setPasscodeInput((prev) => prev.slice(0, -1));
-                  }}
-                  className="h-14 w-20 items-center justify-center rounded-2xl bg-[#F8F8F8] active:bg-[#EAF0FB]"
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete"
+                  disabled={isVerifyingPasscode}
+                  onPress={() => setPasscodeInput((prev) => prev.slice(0, -1))}
+                  className="h-14 flex-1 items-center justify-center rounded-2xl active:bg-[#EAF0FB] dark:active:bg-[#2B3B52]"
                 >
-                  <Text className="text-[17px] font-outfit-semibold text-[#67787F]">
-                    ⌫
-                  </Text>
+                  <Delete size={26} color={isDark ? "#94A3B8" : "#67787F"} />
                 </Pressable>
               </View>
+            </View>
+
+            {/* Actions */}
+            <View className="mt-6 flex-row gap-3">
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  if (isVerifyingPasscode) return;
+                  setShowPasscodeModal(false);
+                  setPasscodeInput("");
+                }}
+                disabled={isVerifyingPasscode}
+                className="h-12 flex-1 flex-row items-center justify-center rounded-2xl border border-[#DDE3EA] bg-white active:opacity-70 dark:border-[#2B3B52] dark:bg-[#1E2E48]"
+              >
+                <Text className="text-[16px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
+                  Cancel
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={handlePasscodeSubmit}
+                disabled={isVerifyingPasscode || passcodeInput.length !== 6}
+                className={`h-12 flex-[1.4] flex-row items-center justify-center rounded-2xl bg-[#123E7C] active:opacity-85 ${isVerifyingPasscode || passcodeInput.length !== 6
+                  ? "opacity-50"
+                  : ""
+                  }`}
+              >
+                {isVerifyingPasscode ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-[16px] font-outfit-semibold text-white">
+                    Set Up Token
+                  </Text>
+                )}
+              </Pressable>
             </View>
           </View>
         </View>

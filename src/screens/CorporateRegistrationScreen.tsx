@@ -15,6 +15,7 @@ import Animated, {
   SlideInLeft
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 type CorporateRegistrationScreenProps = {
   onBack: () => void;
@@ -68,7 +69,7 @@ function ProgressBar({
 }) {
   const progress = Math.min(1, Math.max(0, step / totalSteps));
   return (
-    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5]">
+    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5] dark:bg-[#1E3A5F]">
       <View
         className="h-full rounded-full bg-[#123E7C]"
         style={{ width: `${progress * 100}%` }}
@@ -77,15 +78,15 @@ function ProgressBar({
   );
 }
 
-function BackButton({ onPress }: { onPress: () => void }) {
+function BackButton({ onPress, isDark }: { onPress: () => void; isDark?: boolean }) {
   return (
     <Pressable
       accessibilityLabel="Go back"
       accessibilityRole="button"
-      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] active:opacity-70"
+      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] dark:bg-[#1E2D4A] active:opacity-70"
       onPress={onPress}
     >
-      <ChevronLeft size={22} color="black" />
+      <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "black"} />
     </Pressable>
   );
 }
@@ -104,13 +105,13 @@ function Field({
 }: FieldProps) {
   return (
     <View>
-      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A]">
+      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A] dark:text-[#94A3B8]">
         {label}
       </Text>
       <Pressable onPress={onPress}>
         <View className="relative justify-center">
           <TextInput
-            className="rounded-2xl bg-[#ECEDF0] py-5 pl-4 pr-11 text-[14px] font-outfit text-[#1B2D4A]"
+            className="rounded-2xl bg-[#ECEDF0] dark:bg-[#1E2D4A] py-5 pl-4 pr-11 text-[14px] font-outfit text-[#1B2D4A] dark:text-white"
             placeholder={placeholder}
             placeholderTextColor="#9AA3B2"
             value={value}
@@ -124,7 +125,7 @@ function Field({
         </View>
       </Pressable>
       {helperText && (
-        <Text className="mt-2 text-[13px] font-medium text-[#8A93A6]">
+        <Text className="mt-2 text-[13px] font-medium text-[#8A93A6] dark:text-[#94A3B8]">
           {helperText}
         </Text>
       )}
@@ -157,13 +158,13 @@ function OtpInput({
             className={[
               "h-[72px] w-[48px] items-center justify-center rounded-2xl border-2",
               isFilled
-                ? "border-transparent bg-white"
+                ? "border-transparent bg-white dark:bg-[#1E2D4A]"
                 : isActive
-                  ? "border-[#123E7C] bg-white"
-                  : "border-transparent bg-[#E9EDF2]"
+                  ? "border-[#123E7C] dark:border-[#60A5FA] bg-white dark:bg-[#1E2D4A]"
+                  : "border-transparent bg-[#E9EDF2] dark:bg-[#1E3A5F]"
             ].join(" ")}
           >
-            <Text className="text-[32px] font-outfit-bold text-[#1B2D4A]">
+            <Text className="text-[32px] font-outfit-bold text-[#1B2D4A] dark:text-white">
               {digit}
             </Text>
           </View>
@@ -194,6 +195,7 @@ export default function CorporateRegistrationScreen({
   step = 1,
   totalSteps = 5
 }: CorporateRegistrationScreenProps) {
+  const { isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [corporateAccountNumber, setCorporateAccountNumber] = useState("");
   const [businessEmail, setBusinessEmail] = useState("");
@@ -321,7 +323,7 @@ export default function CorporateRegistrationScreen({
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-[#F3F5F7]"
+      className="flex-1 bg-[#F3F5F7] dark:bg-[#070E1E]"
       style={{ paddingBottom: insets.bottom }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
@@ -331,18 +333,19 @@ export default function CorporateRegistrationScreen({
         keyboardShouldPersistTaps="handled"
       >
         <View className="flex-row items-center pt-6">
-          <BackButton onPress={showOtp ? () => setShowOtp(false) : onBack} />
+          <BackButton onPress={showOtp ? () => setShowOtp(false) : onBack} isDark={isDark} />
           <View className="ml-3 flex-1">
             <ProgressBar step={currentStep} totalSteps={totalSteps} />
           </View>
+          <ThemeToggleButton />
         </View>
 
         {!showOtp ? (
           <>
-            <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+            <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
               Corporate details
             </Text>
-            <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
+            <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6] dark:text-[#94A3B8]">
               Enter your corporate account information exactly as it appears with the
               bank.
             </Text>
@@ -432,10 +435,10 @@ export default function CorporateRegistrationScreen({
           </>
         ) : (
           <Animated.View entering={SlideInLeft.duration(400).springify()}>
-            <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+            <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
               Enter code
             </Text>
-            <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
+            <Text className="mt-2 text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
               We sent a 6-digit code to {businessEmail}
             </Text>
 
@@ -446,7 +449,7 @@ export default function CorporateRegistrationScreen({
             <Pressable
               disabled={resendSeconds > 0}
               className={[
-                "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] bg-[#EEF2F6] px-4 py-4",
+                "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] dark:border-[#2A3D63] bg-[#EEF2F6] dark:bg-[#1E2D4A] px-4 py-4",
                 resendSeconds > 0 ? "opacity-80" : ""
               ].join(" ")}
               onPress={() => {
@@ -455,7 +458,7 @@ export default function CorporateRegistrationScreen({
                 // TODO: trigger the actual resend request here.
               }}
             >
-              <Text className="text-[18px] font-outfit-semibold text-[#193F7F]">
+              <Text className="text-[18px] font-outfit-semibold text-[#193F7F] dark:text-[#93C5FD]">
                 {resendLabel}
               </Text>
             </Pressable>
@@ -508,9 +511,9 @@ export default function CorporateRegistrationScreen({
               onPress={() => setShowDatePicker(false)}
             />
 
-            <View className="rounded-t-[28px] bg-[#F3F5F7] px-4 pb-8 pt-4">
+            <View className="rounded-t-[28px] bg-[#F3F5F7] dark:bg-[#131F35] px-4 pb-8 pt-4">
               <View className="mb-3 flex-row items-center justify-between px-1">
-                <Text className="text-[16px] font-outfit-medium text-[#1B2D4A]">
+                <Text className="text-[16px] font-outfit-medium text-[#1B2D4A] dark:text-white">
                   Select date of birth
                 </Text>
                 <Pressable
@@ -534,7 +537,7 @@ export default function CorporateRegistrationScreen({
                 maximumDate={new Date()}
                 accentColor="#123E7C"
                 textColor="#1B2D4A"
-                themeVariant="light"
+                themeVariant={isDark ? "dark" : "light"}
                 onChange={(_, selectedDate) => {
                   if (selectedDate) {
                     setTempDate(selectedDate);

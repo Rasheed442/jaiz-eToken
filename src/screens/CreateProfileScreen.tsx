@@ -26,6 +26,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
 import { authStorage } from "../lib/auth/storage";
 import { createTotp } from "../lib/auth/totp";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 type CreateProfileScreenProps = {
   onBack: () => void;
@@ -67,7 +68,7 @@ const KEYPAD_ROWS = [
 
 function ProgressBar({ progress }: { progress: number }) {
   return (
-    <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#E0E4EA]">
+    <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#E0E4EA] dark:bg-[#1E3A5F]">
       <View
         className="h-full rounded-full bg-[#123E7C]"
         style={{ width: `${Math.min(1, Math.max(0, progress)) * 100}%` }}
@@ -78,10 +79,12 @@ function ProgressBar({ progress }: { progress: number }) {
 
 function Header({
   onBack,
-  progress
+  progress,
+  isDark
 }: {
   onBack: () => void;
   progress: number;
+  isDark?: boolean;
 }) {
   return (
     <View className="flex-row items-center pt-4">
@@ -89,11 +92,12 @@ function Header({
         accessibilityLabel="Go back"
         accessibilityRole="button"
         onPress={onBack}
-        className="mr-3 h-10 w-10 items-center justify-center rounded-full active:bg-[#E4E8EE]"
+        className="mr-3 h-10 w-10 items-center justify-center rounded-full active:bg-[#E4E8EE] dark:active:bg-[#1E2D4A]"
       >
-        <ChevronLeft size={24} color="#1B2D4A" />
+        <ChevronLeft size={24} color={isDark ? "#FFFFFF" : "#1B2D4A"} />
       </Pressable>
       <ProgressBar progress={progress} />
+      <ThemeToggleButton />
     </View>
   );
 }
@@ -109,13 +113,13 @@ function ScreenTitle({
 }) {
   return (
     <View className="mt-6">
-      <Text className="text-[13px] font-outfit-medium text-[#67787F]">
+      <Text className="text-[13px] font-outfit-medium text-[#67787F] dark:text-[#94A3B8]">
         {step}
       </Text>
-      <Text className="mt-1 text-[28px] font-outfit-semibold text-[#1B2D4A]">
+      <Text className="mt-1 text-[28px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
         {title}
       </Text>
-      <Text className="mt-2 text-[15px] font-outfit leading-[22px] text-[#67787F]">
+      <Text className="mt-2 text-[15px] font-outfit leading-[22px] text-[#67787F] dark:text-[#94A3B8]">
         {subtitle}
       </Text>
     </View>
@@ -138,11 +142,11 @@ function PasscodeField({
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${filled} of ${PASSCODE_LENGTH} digits entered`}
       onPress={onPress}
-      className={`rounded-2xl border bg-white px-5 py-4 ${
-        active ? "border-[#123E7C]" : "border-[#E3E8EE]"
+      className={`rounded-2xl border bg-white dark:bg-[#131F35] px-5 py-4 ${
+        active ? "border-[#123E7C] dark:border-[#60A5FA]" : "border-[#E3E8EE] dark:border-[#2A3D63]"
       }`}
     >
-      <Text className="text-[13px] font-outfit-medium text-[#67787F]">
+      <Text className="text-[13px] font-outfit-medium text-[#67787F] dark:text-[#94A3B8]">
         {label}
       </Text>
       <View className="mt-3 flex-row">
@@ -151,7 +155,7 @@ function PasscodeField({
             key={i}
             // Extra gap after the 3rd dot groups the code as 3 + 3.
             className={`h-3.5 w-3.5 rounded-full ${i === 2 ? "mr-6" : i < PASSCODE_LENGTH - 1 ? "mr-3" : ""} ${
-              i < filled ? "bg-[#123E7C]" : "border-2 border-[#D3D9E1]"
+              i < filled ? "bg-[#123E7C] dark:bg-[#60A5FA]" : "border-2 border-[#D3D9E1] dark:border-[#2A3D63]"
             }`}
           />
         ))}
@@ -163,21 +167,23 @@ function PasscodeField({
 function KeypadButton({
   label,
   onPress,
-  children
+  children,
+  isDark
 }: {
   label: string;
   onPress: () => void;
   children?: React.ReactNode;
+  isDark?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      className="h-16 flex-1 items-center justify-center rounded-2xl active:bg-[#E4E8EE]"
+      className="h-16 flex-1 items-center justify-center rounded-2xl active:bg-[#E4E8EE] dark:active:bg-[#1E2D4A]"
     >
       {children ?? (
-        <Text className="text-[26px] font-outfit-medium text-[#1B2D4A]">
+        <Text className="text-[26px] font-outfit-medium text-[#1B2D4A] dark:text-white">
           {label}
         </Text>
       )}
@@ -239,6 +245,7 @@ export default function CreateProfileScreen({
   phoneNumber,
   progress = 0.8
 }: CreateProfileScreenProps) {
+  const { isDark } = useAppTheme();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -508,9 +515,9 @@ export default function CreateProfileScreen({
   /* --------------------------------- Render -------------------------------- */
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F3F5F7]">
+    <SafeAreaView className="flex-1 bg-[#F3F5F7] dark:bg-[#070E1E]">
       <View className="flex-1 px-6">
-        <Header onBack={handleBack} progress={progress} />
+        <Header onBack={handleBack} progress={progress} isDark={isDark} />
 
         {currentStep === 1 ? (
           <View className="flex-1 pb-6">
@@ -564,8 +571,8 @@ export default function CreateProfileScreen({
                     label="0"
                     onPress={() => handleDigitPress("0")}
                   />
-                  <KeypadButton label="Delete" onPress={handleDelete}>
-                    <Delete size={24} color="#1B2D4A" />
+                  <KeypadButton label="Delete" onPress={handleDelete} isDark={isDark}>
+                    <Delete size={24} color={isDark ? "#FFFFFF" : "#1B2D4A"} />
                   </KeypadButton>
                 </View>
               </View>
@@ -618,9 +625,9 @@ export default function CreateProfileScreen({
                   hitSlop={8}
                 >
                   {showAnswers ? (
-                    <EyeOff size={16} color="#123E7C" />
+                    <EyeOff size={16} color={isDark ? "#60A5FA" : "#123E7C"} />
                   ) : (
-                    <Eye size={16} color="#123E7C" />
+                    <Eye size={16} color={isDark ? "#60A5FA" : "#123E7C"} />
                   )}
                   <Text className="ml-1.5 text-[13px] font-outfit-medium text-[#123E7C]">
                     {showAnswers ? "Hide answers" : "Show answers"}

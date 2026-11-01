@@ -1,6 +1,7 @@
 import { Pressable, StatusBar, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Polyline, Rect } from 'react-native-svg';
+import { useAppTheme } from '@/lib/theme';
 
 /**
  * Device deregistered (eToken) screen.
@@ -50,28 +51,30 @@ export default function DeviceDeregisteredScreen({
   onDone,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { isDark } = useAppTheme();
+  const phoneIconColor = isDark ? "#94A3B8" : "#6B7B80";
 
   return (
     <View
-      className="flex-1 justify-between bg-[#F7F7F7] px-6"
+      className="flex-1 justify-between bg-[#F7F7F7] dark:bg-[#070E1E] px-6"
       style={{ paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 16) }}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Content */}
       <View className="items-center pt-24">
-        <View className="mb-8 h-[72px] w-[72px] items-center justify-center rounded-full bg-[#EEF0F3]">
-          <PhoneOffIcon />
+        <View className="mb-8 h-[72px] w-[72px] items-center justify-center rounded-full bg-[#EEF0F3] dark:bg-[#1E2D4A]">
+          <PhoneOffIcon color={phoneIconColor} />
         </View>
 
         <Text
           accessibilityRole="header"
-          className="mb-2.5 text-center text-[22px] font-bold leading-7 text-[#1A1A1A]"
+          className="mb-2.5 text-center text-[22px] font-bold leading-7 text-[#1A1A1A] dark:text-white"
         >
           Device deregistered
         </Text>
 
-        <Text className="px-4 text-center text-[14px] leading-5 text-[#6B7B80]">
+        <Text className="px-4 text-center text-[14px] leading-5 text-[#6B7B80] dark:text-[#94A3B8]">
           This device no longer has access to your eToken. To use eToken again,
           register a new device or reactivate this one.
         </Text>
@@ -98,7 +101,7 @@ export default function DeviceDeregisteredScreen({
           hitSlop={8}
           className="mt-4 px-6 py-2 active:opacity-60"
         >
-          <Text className="text-[16px] font-medium text-[#6B7B80]">Done</Text>
+          <Text className="text-[16px] font-medium text-[#6B7B80] dark:text-[#94A3B8]">Done</Text>
         </Pressable>
       </View>
     </View>

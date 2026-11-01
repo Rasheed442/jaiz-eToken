@@ -16,6 +16,7 @@ import Animated, { SlideInLeft } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
 import { authStorage } from "../lib/auth/storage";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 type PersonalRegistrationScreenProps = {
   onBack: () => void;
@@ -98,13 +99,13 @@ function Toast({
 }) {
   return (
     <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
-      <View className="mx-6 w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+      <View className="mx-6 w-full max-w-sm rounded-3xl bg-white dark:bg-[#131F35] p-6 shadow-2xl">
         <View className="flex-col items-center justify-center">
           <View className="mr-4  h-10 w-10 items-center justify-center rounded-full bg-red-500">
             <Text className="text-[20px] font-bold text-white">!</Text>
           </View>
           <View className="flex py-4">
-            <Text className="text-[16px] font-outfit-light text-center text-[#1B2D4A] leading-8">
+            <Text className="text-[16px] font-outfit-light text-center text-[#1B2D4A] dark:text-white leading-8">
               {message}
             </Text>
           </View>
@@ -134,7 +135,7 @@ function ProgressBar({
 }) {
   const progress = Math.min(1, Math.max(0, step / totalSteps));
   return (
-    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5]">
+    <View className="h-2.5 w-full overflow-hidden rounded-full bg-[#D6E4F5] dark:bg-[#1E3A5F]">
       <View
         className="h-full rounded-full bg-[#123E7C]"
         style={{ width: `${progress * 100}%` }}
@@ -143,15 +144,15 @@ function ProgressBar({
   );
 }
 
-function BackButton({ onPress }: { onPress: () => void }) {
+function BackButton({ onPress, isDark }: { onPress: () => void; isDark?: boolean }) {
   return (
     <Pressable
       accessibilityLabel="Go back"
       accessibilityRole="button"
-      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] active:opacity-70"
+      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] dark:bg-[#1E2D4A] active:opacity-70"
       onPress={onPress}
     >
-      <ChevronLeft size={22} color="black" />
+      <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "black"} />
     </Pressable>
   );
 }
@@ -172,13 +173,13 @@ function Field({
 }: FieldProps) {
   return (
     <View>
-      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A]">
+      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A] dark:text-[#94A3B8]">
         {label}
       </Text>
       <Pressable onPress={onPress}>
         <View className="relative justify-center">
           <TextInput
-            className="rounded-2xl bg-[#ECEDF0] py-5 pl-4 pr-11 text-[14px] font-outfit text-[#1B2D4A]"
+            className="rounded-2xl bg-[#ECEDF0] dark:bg-[#1E2D4A] py-5 pl-4 pr-11 text-[14px] font-outfit text-[#1B2D4A] dark:text-white"
             placeholder={placeholder}
             placeholderTextColor="#9AA3B2"
             value={value}
@@ -233,13 +234,13 @@ function OtpInput({
             className={[
               "h-[72px] w-[48px] items-center justify-center rounded-2xl border-2",
               isFilled
-                ? "border-transparent bg-white"
+                ? "border-transparent bg-white dark:bg-[#1E2D4A]"
                 : isActive
-                  ? "border-[#123E7C] bg-white"
-                  : "border-transparent bg-[#E9EDF2]"
+                  ? "border-[#123E7C] dark:border-[#60A5FA] bg-white dark:bg-[#1E2D4A]"
+                  : "border-transparent bg-[#E9EDF2] dark:bg-[#1E3A5F]"
             ].join(" ")}
           >
-            <Text className="text-[32px] font-outfit-bold text-[#1B2D4A]">
+            <Text className="text-[32px] font-outfit-bold text-[#1B2D4A] dark:text-white">
               {isFilled ? "*" : ""}
             </Text>
           </View>
@@ -271,6 +272,7 @@ export default function PersonalRegistrationScreen({
   step = 1,
   totalSteps = 5
 }: PersonalRegistrationScreenProps) {
+  const { isDark } = useAppTheme();
   const [accountNumber, setAccountNumber] = useState("");
   const [bvn, setBvn] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -530,7 +532,7 @@ export default function PersonalRegistrationScreen({
       : "Resend code";
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F3F5F7]" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F3F5F7] dark:bg-[#070E1E]" edges={["bottom"]}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -558,10 +560,12 @@ export default function PersonalRegistrationScreen({
                       }
                     : onBack
               }
+              isDark={isDark}
             />
             <View className="ml-3 flex-1">
               <ProgressBar step={currentStep} totalSteps={totalSteps} />
             </View>
+            <ThemeToggleButton />
           </View>
         </View>
         <ScrollView
@@ -571,10 +575,10 @@ export default function PersonalRegistrationScreen({
         >
           {!showOtp && !showDetails ? (
             <>
-              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                 Personal details
               </Text>
-              <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
+              <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6] dark:text-[#94A3B8]">
                 Enter your account number to securely retrieve your registered
                 details.
               </Text>
@@ -642,10 +646,10 @@ export default function PersonalRegistrationScreen({
             </>
           ) : showOtp ? (
             <Animated.View entering={SlideInLeft.duration(400).springify()}>
-              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                 Enter code
               </Text>
-              <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
+              <Text className="mt-2 text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
                 We sent a 6-digit code to {phoneNumber}
               </Text>
 
@@ -656,7 +660,7 @@ export default function PersonalRegistrationScreen({
               <Pressable
                 disabled={resendSeconds > 0}
                 className={[
-                  "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] bg-[#EEF2F6] px-4 py-4",
+                  "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] dark:border-[#2A3D63] bg-[#EEF2F6] dark:bg-[#1E2D4A] px-4 py-4",
                   resendSeconds > 0 ? "opacity-80" : ""
                 ].join(" ")}
                 onPress={async () => {
@@ -686,7 +690,7 @@ export default function PersonalRegistrationScreen({
                   }
                 }}
               >
-                <Text className="text-[18px] font-outfit-semibold text-[#193F7F]">
+                <Text className="text-[18px] font-outfit-semibold text-[#193F7F] dark:text-[#93C5FD]">
                   {resendLabel}
                 </Text>
               </Pressable>
@@ -722,10 +726,10 @@ export default function PersonalRegistrationScreen({
             </Animated.View>
           ) : (
             <Animated.View entering={SlideInLeft.duration(400).springify()}>
-              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+              <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                 Confirm your details
               </Text>
-              <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6]">
+              <Text className="mt-2 text-[15px] font-outfit text-[#8A93A6] dark:text-[#94A3B8]">
                 We retrieved these details using your account number. Review
                 them before continuing.
               </Text>
@@ -750,12 +754,12 @@ export default function PersonalRegistrationScreen({
                     return (
                       <View
                         key={label}
-                        className="rounded-2xl bg-[#ECEDF0] px-4 py-3"
+                        className="rounded-2xl bg-[#ECEDF0] dark:bg-[#131F35] px-4 py-3"
                       >
-                        <Text className="text-[12px] font-outfit text-[#8A93A6]">
+                        <Text className="text-[12px] font-outfit text-[#8A93A6] dark:text-[#94A3B8]">
                           {label}
                         </Text>
-                        <Text className="mt-1 text-[15px] font-outfit-medium text-[#1B2D4A]">
+                        <Text className="mt-1 text-[15px] font-outfit-medium text-[#1B2D4A] dark:text-white">
                           {displayValue}
                         </Text>
                       </View>

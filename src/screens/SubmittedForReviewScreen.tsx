@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, StatusBar, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Polyline } from 'react-native-svg';
+import { ThemeToggleButton, useAppTheme } from '@/lib/theme';
 
 /**
  * Submitted for review (Approver application status) screen.
@@ -68,14 +69,14 @@ const ClockIcon = ({ size = 30, color = COLORS.pending }) => (
   </Svg>
 );
 
-const BackButton = ({ onPress }: { onPress: () => void }) => (
+const BackButton = ({ onPress, isDark }: { onPress: () => void; isDark?: boolean }) => (
   <Pressable
     accessibilityLabel="Go back"
     accessibilityRole="button"
-    className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] active:opacity-70"
+    className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] dark:bg-[#1E2D4A] active:opacity-70"
     onPress={onPress}
   >
-    <ChevronLeft size={22} color="black" />
+    <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "black"} />
   </Pressable>
 );
 
@@ -92,34 +93,36 @@ export default function SubmittedForReviewScreen({
   onBack,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { isDark } = useAppTheme();
   const submittedOn = formatSubmittedDate(submittedAt);
 
   return (
     <View
-      className="flex-1 justify-between bg-[#F7F7F7] px-6"
+      className="flex-1 justify-between bg-[#F7F7F7] dark:bg-[#070E1E] px-6"
       style={{ paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 16) }}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Header with back button */}
       <View className="flex-row items-center pt-6">
-        {onBack && <BackButton onPress={onBack} />}
+        {onBack && <BackButton onPress={onBack} isDark={isDark} />}
+        <ThemeToggleButton />
       </View>
 
       {/* Content */}
       <View className="items-center pt-28">
-        <View className="mb-8 h-[72px] w-[72px] items-center justify-center rounded-full bg-[#FBEBCF]">
+        <View className="mb-8 h-[72px] w-[72px] items-center justify-center rounded-full bg-[#FBEBCF] dark:bg-[#3B2A14]">
           <ClockIcon />
         </View>
 
         <Text
           accessibilityRole="header"
-          className="mb-2.5 text-center text-[22px] font-bold leading-7 text-[#1A1A1A]"
+          className="mb-2.5 text-center text-[22px] font-bold leading-7 text-[#1A1A1A] dark:text-white"
         >
           Submitted for review
         </Text>
 
-        <Text className="mb-6 px-4 text-center text-[14px] leading-5 text-[#6B7B80]">
+        <Text className="mb-6 px-4 text-center text-[14px] leading-5 text-[#6B7B80] dark:text-[#94A3B8]">
           {submittedOn
             ? `Your application was submitted on ${submittedOn}. `
             : 'Your application has been submitted. '}
@@ -136,12 +139,12 @@ export default function SubmittedForReviewScreen({
           </Text>
         </View>
 
-        <View className="w-full flex-row items-center justify-between rounded-2xl bg-[#F1F2F4] px-6 py-5">
-          <Text className="text-[14px] text-[#6B7B80]">Reference ID</Text>
+        <View className="w-full flex-row items-center justify-between rounded-2xl bg-[#F1F2F4] dark:bg-[#131F35] px-6 py-5">
+          <Text className="text-[14px] text-[#6B7B80] dark:text-[#94A3B8]">Reference ID</Text>
           <Text
             selectable
             accessibilityLabel={`Reference ID ${referenceId}`}
-            className="ml-4 shrink text-[14px] font-semibold text-[#1A1A1A]"
+            className="ml-4 shrink text-[14px] font-semibold text-[#1A1A1A] dark:text-white"
           >
             {referenceId}
           </Text>
@@ -174,7 +177,7 @@ export default function SubmittedForReviewScreen({
           hitSlop={8}
           className="mt-4 px-6 py-2 active:opacity-60"
         >
-          <Text className="text-[16px] font-medium text-[#6B7B80]">
+          <Text className="text-[16px] font-medium text-[#6B7B80] dark:text-[#94A3B8]">
             Done for now
           </Text>
         </Pressable>

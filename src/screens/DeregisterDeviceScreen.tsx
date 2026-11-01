@@ -1,6 +1,7 @@
 import { ActivityIndicator, Pressable, StatusBar, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Path } from 'react-native-svg';
+import { useAppTheme } from '@/lib/theme';
 
 
 type Props = {
@@ -42,37 +43,38 @@ export default function DeregisterDeviceScreen({
   errorMessage,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { isDark } = useAppTheme();
 
   return (
     <View
-      className="flex-1 justify-between bg-[#F7F7F7] px-6"
+      className="flex-1 justify-between bg-[#F7F7F7] dark:bg-[#070E1E] px-6"
       style={{ paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 16) }}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Content */}
       <View className="items-center pt-24">
-        <View className="mb-8 h-[80px] w-[80px] items-center justify-center rounded-full bg-[#FDECEC]">
+        <View className="mb-8 h-[80px] w-[80px] items-center justify-center rounded-full bg-[#FDECEC] dark:bg-[#3B1E1E]">
           <WarningIcon />
         </View>
 
         <Text
           accessibilityRole="header"
-          className="mb-2.5 text-center text-[22px] font-bold leading-7 text-[#1A1A1A]"
+          className="mb-2.5 text-center text-[22px] font-bold leading-7 text-[#1A1A1A] dark:text-white"
         >
           Deregister this device?
         </Text>
 
-        <Text className="mb-7 px-3 text-center text-[14px] leading-5 text-[#6B7B80]">
+        <Text className="mb-7 px-3 text-center text-[14px] leading-5 text-[#6B7B80] dark:text-[#94A3B8]">
           This device will lose access to your eToken. You will need to verify
           your identity again before you can generate codes on any device.
         </Text>
 
-        <View className="w-full gap-3 rounded-[20px] bg-white px-2 py-8">
+        <View className="w-full gap-3 rounded-[20px] bg-white dark:bg-[#131F35] px-2 py-8">
           {CONSEQUENCES.map((text) => (
             <View key={text} className="flex-row items-center">
               <View className="mr-3 h-1.5 w-1.5 rounded-full bg-[#1F4380]" />
-              <Text className="flex-1 text-[13px] font-normal leading-4 text-[#4A4A4A]">
+              <Text className="flex-1 text-[13px] font-normal leading-4 text-[#4A4A4A] dark:text-[#94A3B8]">
                 {text}
               </Text>
             </View>
@@ -112,7 +114,7 @@ export default function DeregisterDeviceScreen({
           hitSlop={8}
           className="mt-4 px-6 py-2 active:opacity-60 disabled:opacity-40"
         >
-          <Text className="text-[16px] font-medium text-[#6B7B80]">Cancel</Text>
+          <Text className="text-[16px] font-medium text-[#6B7B80] dark:text-[#94A3B8]">Cancel</Text>
         </Pressable>
       </View>
     </View>

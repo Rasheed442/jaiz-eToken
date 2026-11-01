@@ -11,6 +11,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 const OTP_LENGTH = 6;
 
@@ -25,7 +26,7 @@ function OtpInput({ value, onChange }: { value: string; onChange: (v: string) =>
 
   return (
     <View>
-      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A]">
+      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A] dark:text-[#CBD5E1]">
         Verification code
       </Text>
       <Pressable onPress={() => inputRef.current?.focus()}>
@@ -35,11 +36,13 @@ function OtpInput({ value, onChange }: { value: string; onChange: (v: string) =>
             return (
               <View
                 key={i}
-                className={`h-14 w-[46px] items-center justify-center rounded-xl border bg-white ${
-                  isActive ? "border-[#123E7C]" : "border-[#DDE3EA]"
+                className={`h-14 w-[46px] items-center justify-center rounded-xl border bg-white dark:bg-[#131F35] ${
+                  isActive
+                    ? "border-[#123E7C] dark:border-[#60A5FA]"
+                    : "border-[#DDE3EA] dark:border-[#2A3D63]"
                 }`}
               >
-                <Text className="text-[22px] font-outfit-semibold text-[#1B2D4A]">
+                <Text className="text-[22px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                   {value[i] ?? ""}
                 </Text>
               </View>
@@ -64,13 +67,19 @@ function OtpInput({ value, onChange }: { value: string; onChange: (v: string) =>
 }
 
 function ErrorBanner({ message }: { message: string }) {
+  const { isDark } = useAppTheme();
+
   return (
     <View
       accessibilityRole="alert"
-      className="mt-5 flex-row items-start rounded-xl border border-[#F0B4B4] bg-[#FDECEC] px-4 py-3"
+      className="mt-5 flex-row items-start rounded-xl border border-[#F0B4B4] dark:border-[#7F1D1D] bg-[#FDECEC] dark:bg-[#3B1E1E] px-4 py-3"
     >
-      <AlertCircle size={18} color="#B3261E" style={{ marginTop: 1 }} />
-      <Text className="ml-2.5 flex-1 text-[13px] leading-[18px] font-outfit-medium text-[#B3261E]">
+      <AlertCircle
+        size={18}
+        color={isDark ? "#F87171" : "#B3261E"}
+        style={{ marginTop: 1 }}
+      />
+      <Text className="ml-2.5 flex-1 text-[13px] leading-[18px] font-outfit-medium text-[#B3261E] dark:text-[#F87171]">
         {message}
       </Text>
     </View>
@@ -82,6 +91,7 @@ export default function DeviceChangeOtpScreen({
   onNext,
   phoneNumber
 }: DeviceChangeOtpScreenProps) {
+  const { isDark } = useAppTheme();
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -107,20 +117,21 @@ export default function DeviceChangeOtpScreen({
   const clearError = () => error && setError(null);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F8FA]">
+    <SafeAreaView className="flex-1 bg-[#F6F8FA] dark:bg-[#070E1E]">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View className="flex-row items-center px-6 pt-4">
+        <View className="flex-row items-center justify-between px-6 pt-4">
           <Pressable
             accessibilityLabel="Go back"
             accessibilityRole="button"
-            className="h-10 w-10 items-center justify-center rounded-full border border-[#DDE3EA] bg-white active:opacity-70"
+            className="h-10 w-10 items-center justify-center rounded-full border border-[#DDE3EA] dark:border-[#2A3D63] bg-white dark:bg-[#1E2D4A] active:opacity-70"
             onPress={onBack}
           >
-            <ChevronLeft size={22} color="#1B2D4A" />
+            <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "#1B2D4A"} />
           </Pressable>
+          <ThemeToggleButton />
         </View>
 
         <ScrollView
@@ -130,13 +141,13 @@ export default function DeviceChangeOtpScreen({
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7]">
-            <ShieldCheck size={24} color="#123E7C" />
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7] dark:bg-[#1E2D4A]">
+            <ShieldCheck size={24} color={isDark ? "#60A5FA" : "#123E7C"} />
           </View>
-          <Text className="mt-5 text-[26px] leading-[32px] font-outfit-semibold text-[#1B2D4A]">
+          <Text className="mt-5 text-[26px] leading-[32px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
             Verify your identity
           </Text>
-          <Text className="mt-2 text-[15px] leading-[22px] font-outfit text-[#67787F]">
+          <Text className="mt-2 text-[15px] leading-[22px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
             Enter the 6-digit code sent to {phoneNumber} to verify your device change request.
           </Text>
 
@@ -153,7 +164,7 @@ export default function DeviceChangeOtpScreen({
           {error && <ErrorBanner message={error} />}
         </ScrollView>
 
-        <View className="border-t border-[#E3E8EE] px-6 pb-4 pt-4">
+        <View className="border-t border-[#E3E8EE] dark:border-[#1E293B] px-6 pb-4 pt-4">
           <Pressable
             accessibilityRole="button"
             onPress={handleSubmit}
@@ -164,7 +175,9 @@ export default function DeviceChangeOtpScreen({
           >
             {isLoading && <ActivityIndicator size="small" color="#FFFFFF" />}
             <Text
-              className={`text-[17px] font-outfit-semibold text-white ${isLoading ? "ml-3" : ""}`}
+              className={`text-[17px] font-outfit-semibold text-white ${
+                isLoading ? "ml-3" : ""
+              }`}
             >
               {isLoading ? "Verifying..." : "Continue"}
             </Text>

@@ -15,6 +15,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 const PASSCODE_LENGTH = 6;
 
@@ -33,10 +34,12 @@ function Field({
 
   return (
     <View>
-      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A]">{label}</Text>
+      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A] dark:text-[#CBD5E1]">{label}</Text>
       <View
-        className={`h-[52px] flex-row items-center rounded-xl border bg-white px-4 ${
-          focused ? "border-[#123E7C]" : "border-[#DDE3EA]"
+        className={`h-[52px] flex-row items-center rounded-xl border bg-white dark:bg-[#131F35] px-4 ${
+          focused
+            ? "border-[#123E7C] dark:border-[#60A5FA]"
+            : "border-[#DDE3EA] dark:border-[#2A3D63]"
         }`}
       >
         <TextInput
@@ -50,7 +53,7 @@ function Field({
             inputProps.onBlur?.(e);
           }}
           placeholderTextColor="#9AA5B1"
-          className="flex-1 text-[16px] font-outfit text-[#1B2D4A]"
+          className="flex-1 text-[16px] font-outfit text-[#1B2D4A] dark:text-white"
         />
       </View>
     </View>
@@ -58,13 +61,19 @@ function Field({
 }
 
 function ErrorBanner({ message }: { message: string }) {
+  const { isDark } = useAppTheme();
+
   return (
     <View
       accessibilityRole="alert"
-      className="mt-5 flex-row items-start rounded-xl border border-[#F0B4B4] bg-[#FDECEC] px-4 py-3"
+      className="mt-5 flex-row items-start rounded-xl border border-[#F0B4B4] dark:border-[#7F1D1D] bg-[#FDECEC] dark:bg-[#3B1E1E] px-4 py-3"
     >
-      <AlertCircle size={18} color="#B3261E" style={{ marginTop: 1 }} />
-      <Text className="ml-2.5 flex-1 text-[13px] leading-[18px] font-outfit-medium text-[#B3261E]">
+      <AlertCircle
+        size={18}
+        color={isDark ? "#F87171" : "#B3261E"}
+        style={{ marginTop: 1 }}
+      />
+      <Text className="ml-2.5 flex-1 text-[13px] leading-[18px] font-outfit-medium text-[#B3261E] dark:text-[#F87171]">
         {message}
       </Text>
     </View>
@@ -74,20 +83,20 @@ function ErrorBanner({ message }: { message: string }) {
 function SuccessModal({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
     <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
-      <View className="mx-6 w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+      <View className="mx-6 w-full max-w-sm rounded-3xl bg-white dark:bg-[#131F35] p-6 shadow-2xl">
         <View className="flex-col items-center justify-center">
-          <View className="h-16 w-16 items-center justify-center rounded-full bg-[#E6F4EA]">
+          <View className="h-16 w-16 items-center justify-center rounded-full bg-[#E6F4EA] dark:bg-[#123824]">
             <CheckCircle size={32} color="#34A853" />
           </View>
           <View className="flex py-4">
-            <Text className="text-[16px] font-outfit-medium text-center text-[#1B2D4A] leading-6">
+            <Text className="text-[16px] font-outfit-medium text-center text-[#1B2D4A] dark:text-white leading-6">
               {message}
             </Text>
           </View>
         </View>
         <Pressable
           onPress={onDismiss}
-          className="mt-4 rounded-2xl bg-[#123E7C] py-3"
+          className="mt-4 rounded-2xl bg-[#123E7C] py-3 active:opacity-85"
         >
           <Text className="text-center text-[16px] font-outfit-semibold text-white">
             OK
@@ -104,6 +113,7 @@ export default function DeviceChangeDetailsScreen({
   phoneNumber,
   changeToken
 }: DeviceChangeDetailsScreenProps) {
+  const { isDark } = useAppTheme();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -161,7 +171,7 @@ export default function DeviceChangeDetailsScreen({
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F8FA]">
+    <SafeAreaView className="flex-1 bg-[#F6F8FA] dark:bg-[#070E1E]">
       {showSuccessModal && (
         <SuccessModal
           message={successMessage}
@@ -172,15 +182,16 @@ export default function DeviceChangeDetailsScreen({
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View className="flex-row items-center px-6 pt-4">
+        <View className="flex-row items-center justify-between px-6 pt-4">
           <Pressable
             accessibilityLabel="Go back"
             accessibilityRole="button"
-            className="h-10 w-10 items-center justify-center rounded-full border border-[#DDE3EA] bg-white active:opacity-70"
+            className="h-10 w-10 items-center justify-center rounded-full border border-[#DDE3EA] dark:border-[#2A3D63] bg-white dark:bg-[#1E2D4A] active:opacity-70"
             onPress={onBack}
           >
-            <ChevronLeft size={22} color="#1B2D4A" />
+            <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "#1B2D4A"} />
           </Pressable>
+          <ThemeToggleButton />
         </View>
 
         <ScrollView
@@ -190,20 +201,20 @@ export default function DeviceChangeDetailsScreen({
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7]">
-            <Smartphone size={24} color="#123E7C" />
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7] dark:bg-[#1E2D4A]">
+            <Smartphone size={24} color={isDark ? "#60A5FA" : "#123E7C"} />
           </View>
-          <Text className="mt-5 text-[26px] leading-[32px] font-outfit-semibold text-[#1B2D4A]">
+          <Text className="mt-5 text-[26px] leading-[32px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
             Complete device change
           </Text>
-          <Text className="mt-2 text-[15px] leading-[22px] font-outfit text-[#67787F]">
+          <Text className="mt-2 text-[15px] leading-[22px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
             Complete the device change for {phoneNumber}. Your eToken will be moved to this device.
           </Text>
 
           {error && <ErrorBanner message={error} />}
         </ScrollView>
 
-        <View className="border-t border-[#E3E8EE] px-6 pb-4 pt-4">
+        <View className="border-t border-[#E3E8EE] dark:border-[#1E293B] px-6 pb-4 pt-4">
           <Pressable
             accessibilityRole="button"
             onPress={handleSubmit}

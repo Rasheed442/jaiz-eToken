@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registrationApi } from "../lib/api";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 const PASSCODE_LENGTH = 6;
 const OTP_LENGTH = 6;
@@ -103,14 +104,24 @@ const STEP_CONTENT: Record<Step, { title: string; subtitle: string }> = {
 
 /* ---------- Small building blocks ---------- */
 
-function ProgressBar({ current, total }: { current: number; total: number }) {
+function ProgressBar({
+  current,
+  total,
+  isDark
+}: {
+  current: number;
+  total: number;
+  isDark?: boolean;
+}) {
   return (
     <View className="flex-1 flex-row items-center gap-1.5">
       {Array.from({ length: total }).map((_, i) => (
         <View
           key={i}
           className={`h-1 flex-1 rounded-full ${
-            i < current ? "bg-[#123E7C]" : "bg-[#D9E0E8]"
+            i < current
+              ? "bg-[#123E7C] dark:bg-[#60A5FA]"
+              : "bg-[#D9E0E8] dark:bg-[#2A3D63]"
           }`}
         />
       ))}
@@ -127,10 +138,12 @@ function Field({
 
   return (
     <View>
-      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A]">{label}</Text>
+      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A] dark:text-[#94A3B8]">{label}</Text>
       <View
-        className={`h-[52px] flex-row items-center rounded-xl border bg-white px-4 ${
-          focused ? "border-[#123E7C]" : "border-[#DDE3EA]"
+        className={`h-[52px] flex-row items-center rounded-xl border bg-white dark:bg-[#1E2D4A] px-4 ${
+          focused
+            ? "border-[#123E7C] dark:border-[#60A5FA]"
+            : "border-[#DDE3EA] dark:border-[#2A3D63]"
         }`}
       >
         <TextInput
@@ -144,7 +157,7 @@ function Field({
             inputProps.onBlur?.(e);
           }}
           placeholderTextColor="#9AA5B1"
-          className="flex-1 text-[16px] font-outfit text-[#1B2D4A]"
+          className="flex-1 text-[16px] font-outfit text-[#1B2D4A] dark:text-white"
         />
         {trailing}
       </View>
@@ -171,7 +184,7 @@ function OtpInput({ value, onChange }: { value: string; onChange: (v: string) =>
 
   return (
     <View>
-      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A]">
+      <Text className="mb-2 text-[14px] font-outfit-medium text-[#1B2D4A] dark:text-[#94A3B8]">
         Verification code
       </Text>
       <Pressable onPress={() => inputRef.current?.focus()}>
@@ -181,11 +194,13 @@ function OtpInput({ value, onChange }: { value: string; onChange: (v: string) =>
             return (
               <View
                 key={i}
-                className={`h-14 w-[46px] items-center justify-center rounded-xl border bg-white ${
-                  isActive ? "border-[#123E7C]" : "border-[#DDE3EA]"
+                className={`h-14 w-[46px] items-center justify-center rounded-xl border bg-white dark:bg-[#1E2D4A] ${
+                  isActive
+                    ? "border-[#123E7C] dark:border-[#60A5FA]"
+                    : "border-[#DDE3EA] dark:border-[#2A3D63]"
                 }`}
               >
-                <Text className="text-[22px] font-outfit-semibold text-[#1B2D4A]">
+                <Text className="text-[22px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
                   {value[i] ?? ""}
                 </Text>
               </View>
@@ -218,6 +233,7 @@ export default function ForgotPasscodeScreen({
   username: initialUsername = "",
   accountNumber: initialAccountNumber = ""
 }: ForgotPasscodeScreenProps) {
+  const { isDark } = useAppTheme();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [username, setUsername] = useState(initialUsername);
   const [accountNumber, setAccountNumber] = useState(initialAccountNumber);
@@ -398,7 +414,7 @@ export default function ForgotPasscodeScreen({
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F8FA]">
+    <SafeAreaView className="flex-1 bg-[#F6F8FA] dark:bg-[#070E1E]">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -408,17 +424,18 @@ export default function ForgotPasscodeScreen({
           <Pressable
             accessibilityLabel="Go back"
             accessibilityRole="button"
-            className="h-10 w-10 items-center justify-center rounded-full border border-[#DDE3EA] bg-white active:opacity-70"
+            className="h-10 w-10 items-center justify-center rounded-full border border-[#DDE3EA] dark:border-[#2A3D63] bg-white dark:bg-[#131F35] active:opacity-70"
             onPress={handleBack}
           >
-            <ChevronLeft size={22} color="#1B2D4A" />
+            <ChevronLeft size={22} color={isDark ? "#94A3B8" : "#1B2D4A"} />
           </Pressable>
           <View className="ml-4 flex-1">
-            <ProgressBar current={currentStep} total={TOTAL_STEPS} />
+            <ProgressBar current={currentStep} total={TOTAL_STEPS} isDark={isDark} />
           </View>
-          <Text className="ml-4 text-[13px] font-outfit-medium text-[#67787F]">
+          <Text className="ml-4 text-[13px] font-outfit-medium text-[#67787F] dark:text-[#94A3B8]">
             {currentStep}/{TOTAL_STEPS}
           </Text>
+          <ThemeToggleButton />
         </View>
 
         <ScrollView
@@ -429,13 +446,13 @@ export default function ForgotPasscodeScreen({
           showsVerticalScrollIndicator={false}
         >
           {/* Title block */}
-          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7]">
-            <Icon size={24} color="#123E7C" />
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-[#E6EDF7] dark:bg-[#1E2D4A]">
+            <Icon size={24} color={isDark ? "#60A5FA" : "#123E7C"} />
           </View>
-          <Text className="mt-5 text-[26px] leading-[32px] font-outfit-semibold text-[#1B2D4A]">
+          <Text className="mt-5 text-[26px] leading-[32px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
             {title}
           </Text>
-          <Text className="mt-2 text-[15px] leading-[22px] font-outfit text-[#67787F]">
+          <Text className="mt-2 text-[15px] leading-[22px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
             {subtitle}
           </Text>
 
@@ -538,7 +555,7 @@ export default function ForgotPasscodeScreen({
         </ScrollView>
 
         {/* Pinned action bar */}
-        <View className="border-t border-[#E3E8EE] px-6 pb-4 pt-4">
+        <View className="border-t border-[#E3E8EE] dark:border-[#2A3D63] px-6 pb-4 pt-4">
           <Pressable
             accessibilityRole="button"
             onPress={handlers[currentStep]}
@@ -566,7 +583,7 @@ export default function ForgotPasscodeScreen({
       >
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
           <Animated.View
-            className="w-full max-w-sm rounded-3xl bg-white p-6"
+            className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#131F35] p-6"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
@@ -579,11 +596,11 @@ export default function ForgotPasscodeScreen({
               <Check size={32} color="#1E8E5A" />
             </View>
 
-            <Text className="mt-10 text-center text-[22px] font-outfit-semibold text-[#1B2D4A]">
+            <Text className="mt-10 text-center text-[22px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
               Passcode Reset Successfully
             </Text>
 
-            <Text className="mt-3 text-center text-[15px] font-light text-[#67787F] leading-[22px]">
+            <Text className="mt-3 text-center text-[15px] font-light text-[#67787F] dark:text-[#94A3B8] leading-[22px]">
               {successMessage}
             </Text>
 

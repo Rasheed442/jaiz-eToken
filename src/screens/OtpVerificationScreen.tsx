@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import Animated, { SlideInLeft } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 type OtpVerificationScreenProps = {
   onBack: () => void;
@@ -21,14 +22,15 @@ type OtpVerificationScreenProps = {
 const OTP_LENGTH = 6;
 
 function BackButton({ onPress }: { onPress: () => void }) {
+  const { isDark } = useAppTheme();
   return (
     <Pressable
       accessibilityLabel="Go back"
       accessibilityRole="button"
-      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] active:opacity-70"
+      className="h-10 w-10 items-center justify-center rounded-xl bg-[#ecedee] dark:bg-[#1E2D4A] active:opacity-70"
       onPress={onPress}
     >
-      <ChevronLeft size={22} color="black" />
+      <ChevronLeft size={22} color={isDark ? "#FFFFFF" : "#000000"} />
     </Pressable>
   );
 }
@@ -58,13 +60,13 @@ function OtpInput({
             className={[
               "h-[72px] w-[48px] items-center justify-center rounded-2xl border-2",
               isFilled
-                ? "border-transparent bg-white"
+                ? "border-transparent bg-white dark:bg-[#131F35]"
                 : isActive
-                  ? "border-[#123E7C] bg-white"
-                  : "border-transparent bg-[#E9EDF2]"
+                  ? "border-[#123E7C] dark:border-[#60A5FA] bg-white dark:bg-[#131F35]"
+                  : "border-transparent bg-[#E9EDF2] dark:bg-[#1E2D4A]"
             ].join(" ")}
           >
-            <Text className="text-[32px] font-outfit-bold text-[#1B2D4A]">
+            <Text className="text-[32px] font-outfit-bold text-[#1B2D4A] dark:text-white">
               {digit ? "*" : ""}
             </Text>
           </View>
@@ -111,7 +113,7 @@ export default function OtpVerificationScreen({
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-[#F3F5F7]"
+      className="flex-1 bg-[#F3F5F7] dark:bg-[#070E1E]"
       style={{ paddingBottom: insets.bottom }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
@@ -120,15 +122,16 @@ export default function OtpVerificationScreen({
         contentContainerClassName="px-6 pb-10 pt-14"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="flex-row items-center pt-6">
+        <View className="flex-row items-center justify-between pt-6">
           <BackButton onPress={onBack} />
+          <ThemeToggleButton />
         </View>
 
         <Animated.View entering={SlideInLeft.duration(400).springify()}>
-          <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A]">
+          <Text className="mt-7 text-[26px] font-outfit-semibold text-[#1B2D4A] dark:text-white">
             Enter code
           </Text>
-          <Text className="mt-2 text-[15px] font-outfit text-[#67787F]">
+          <Text className="mt-2 text-[15px] font-outfit text-[#67787F] dark:text-[#94A3B8]">
             We sent a 6-digit code to {phoneNumber}
           </Text>
 
@@ -139,7 +142,7 @@ export default function OtpVerificationScreen({
           <Pressable
             disabled={resendSeconds > 0}
             className={[
-              "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] bg-[#EEF2F6] px-4 py-4",
+              "mt-8 items-center justify-center rounded-3xl border-2 border-[#D4DFFD] dark:border-[#2A3D63] bg-[#EEF2F6] dark:bg-[#131F35] px-4 py-4",
               resendSeconds > 0 ? "opacity-80" : ""
             ].join(" ")}
             onPress={() => {
@@ -148,7 +151,7 @@ export default function OtpVerificationScreen({
               // TODO: trigger the actual resend request here.
             }}
           >
-            <Text className="text-[18px] font-outfit-semibold text-[#193F7F]">
+            <Text className="text-[18px] font-outfit-semibold text-[#193F7F] dark:text-[#60A5FA]">
               {resendLabel}
             </Text>
           </Pressable>

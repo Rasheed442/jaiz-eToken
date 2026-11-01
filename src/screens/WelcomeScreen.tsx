@@ -18,6 +18,7 @@ import Animated, {
   withTiming
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ThemeToggleButton, useAppTheme } from "@/lib/theme";
 
 type AccountType = "Personal" | "Corporate";
 
@@ -30,6 +31,7 @@ export default function WelcomeScreen({
   onContinue: (accountType: AccountType) => void;
   onLogin: () => void;
 }) {
+  const { isDark } = useAppTheme();
   const [accountType, setAccountType] = useState<AccountType>("Personal");
   const [segmentWidth, setSegmentWidth] = useState(0);
   const insets = useSafeAreaInsets();
@@ -121,20 +123,23 @@ export default function WelcomeScreen({
             paddingHorizontal: horizontalPadding
           }}
         >
-          <View className="flex-row items-center">
-            <Image
-              source={require("../../assets/images/jaiz-favicon-logo.jpeg")}
-              accessibilityLabel="Jaiz Bank logo"
-              resizeMode="cover"
-              style={{ width: 28, height: 28, backgroundColor: "#064783" }}
-            />
-            <Text className="ml-1.5 text-[18px] font-outfit-semibold text-white">
-              jaiz bank
-            </Text>
-            <View className="mx-3 h-6 w-px bg-white/45" />
-            <Text className="text-[15px] font-outfit-semibold text-[#FFB900]">
-              eToken
-            </Text>
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <Image
+                source={require("../../assets/images/jaiz-favicon-logo.jpeg")}
+                accessibilityLabel="Jaiz Bank logo"
+                resizeMode="cover"
+                style={{ width: 28, height: 28, backgroundColor: "#064783" }}
+              />
+              <Text className="ml-1.5 text-[18px] font-outfit-semibold text-white">
+                jaiz bank
+              </Text>
+              <View className="mx-3 h-6 w-px bg-white/45" />
+              <Text className="text-[15px] font-outfit-semibold text-[#FFB900]">
+                eToken
+              </Text>
+            </View>
+            <ThemeToggleButton />
           </View>
 
           <View style={{ marginTop: height * (compact ? 0.12 : 0.2) }}>
@@ -181,19 +186,19 @@ export default function WelcomeScreen({
           paddingBottom: Math.max(insets.bottom, compact ? 10 : 16),
           paddingHorizontal: horizontalPadding
         }}
-        className="rounded-t-[28px] bg-white pt-3"
+        className="rounded-t-[28px] bg-white dark:bg-[#0F172A] pt-3"
       >
         <View className="w-full flex-1 self-center" style={{ maxWidth: 520 }}>
-          <View className="h-1 w-10 self-center rounded-full bg-[#D9DDE3]" />
+          <View className="h-1 w-10 self-center rounded-full bg-[#D9DDE3] dark:bg-[#334155]" />
 
           <Text
-            className={`${compact ? "mt-3" : "mt-5"} text-[14px] font-outfit-semibold text-[#4F5661]`}
+            className={`${compact ? "mt-3" : "mt-5"} text-[14px] font-outfit-semibold text-[#4F5661] dark:text-[#94A3B8]`}
           >
             Continue as
           </Text>
 
           <View
-            className={`relative ${compact ? "mt-2" : "mt-3"} flex-row rounded-2xl bg-[#F0F1F3] p-2`}
+            className={`relative ${compact ? "mt-2" : "mt-3"} flex-row rounded-2xl bg-[#F0F1F3] dark:bg-[#1E293B] p-2`}
             onLayout={(event) => {
               setSegmentWidth(
                 event.nativeEvent.layout.width / accountOptions.length
@@ -235,12 +240,20 @@ export default function WelcomeScreen({
                 >
                   <Icon
                     size={17}
-                    color={isSelected ? "#FFB900" : "#555D67"}
+                    color={
+                      isSelected
+                        ? "#FFB900"
+                        : isDark
+                          ? "#94A3B8"
+                          : "#555D67"
+                    }
                     strokeWidth={2}
                   />
                   <Text
                     className={`ml-2 text-[16px] font-outfit-semibold ${
-                      isSelected ? "text-white" : "text-[#555D67]"
+                      isSelected
+                        ? "text-white"
+                        : "text-[#555D67] dark:text-[#94A3B8]"
                     }`}
                   >
                     {option}
@@ -251,10 +264,14 @@ export default function WelcomeScreen({
           </View>
 
           <View
-            className={`${compact ? "mt-2 min-h-[68px]" : "mt-3 min-h-[82px]"} flex-row items-start rounded-2xl bg-[#FFF7DF] px-4 py-3`}
+            className={`${compact ? "mt-2 min-h-[68px]" : "mt-3 min-h-[82px]"} flex-row items-start rounded-2xl bg-[#FFF7DF] dark:bg-[#1E293B] px-4 py-3`}
           >
-            <ShieldCheck size={19} color="#075091" strokeWidth={2.2} />
-            <Text className="ml-3 flex-1 text-[13px] font-outfit leading-[20px] text-[#3F5369]">
+            <ShieldCheck
+              size={19}
+              color={isDark ? "#FFB900" : "#075091"}
+              strokeWidth={2.2}
+            />
+            <Text className="ml-3 flex-1 text-[13px] font-outfit leading-[20px] text-[#3F5369] dark:text-[#CBD5E1]">
               {accountDescription}
             </Text>
           </View>
@@ -277,11 +294,11 @@ export default function WelcomeScreen({
           <View
             className={`${compact ? "mt-2" : "mt-3"} flex-row items-center justify-center`}
           >
-            <Text className="text-[14px] font-outfit text-[#6F7783]">
+            <Text className="text-[14px] font-outfit text-[#6F7783] dark:text-[#94A3B8]">
               Already registered?{" "}
             </Text>
             <Pressable onPress={onLogin} hitSlop={8} accessibilityRole="button">
-              <Text className="text-[13px] font-outfit-semibold text-[#064783]">
+              <Text className="text-[13px] font-outfit-semibold text-[#064783] dark:text-[#60A5FA]">
                 Log in
               </Text>
             </Pressable>
